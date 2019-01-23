@@ -197,8 +197,8 @@ class matrix_ref<T, Transpose<decorated>> : private matrix_ref<T, decorated> {
 	typedef Transpose<decorated> matrix_type;
 	typedef matrix_ref<T, decorated> base;
 	friend class matrix_ref<T, decorated>;
-	using base::iterator;
-	using base::const_iterator;
+	using typename base::iterator;
+	using typename base::const_iterator;
 	typedef typename base::row_iterator col_iterator;
 	typedef typename base::const_row_iterator const_col_iterator;
 	typedef typename base::col_iterator row_iterator;
