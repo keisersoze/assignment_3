@@ -3,6 +3,7 @@
 
 #include<type_traits>
 #include<list>
+#include <thread>
 
 #include"matrix.h"
 
@@ -197,17 +198,23 @@ class matrix_product {
 					result(i,j) += lhs(i,k)*rhs(k,j);
 				}					
 	}
+
+	void do_parallel_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs){
+		if()
+	}
+
 	
 	
 	std::list<matrix_wrap<T>> matrices;
 	std::vector<unsigned> sizes;
 };	
-	
-template<typename T, class LType, class RType>
-matrix_product<T, matrix_ref<T,LType>::H, matrix_ref<T,RType>::W> 
+
+
+
+matrix_product<T, matrix_ref<T,LType>::H, matrix_ref<T,RType>::W>
 operator * (const matrix_ref<T,LType>& lhs, const matrix_ref<T,RType>& rhs) {
 	static_assert(matrix_ref<T,LType>::W*matrix_ref<T,LType>::H==0 || matrix_ref<T,LType>::W==matrix_ref<T,LType>::H,
-			"dimension mismatch in Matrix multiplication");
+				  "dimension mismatch in Matrix multiplication");
 	if (lhs.get_width()!=rhs.get_height())
 		throw std::domain_error("dimension mismatch in Matrix multiplication");
 	matrix_product<T, matrix_ref<T,LType>::H, matrix_ref<T,RType>::W> result;
