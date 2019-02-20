@@ -256,6 +256,10 @@ class concrete_matrix_wrap_impl : public matrix_wrap_impl<T> {
 	unsigned get_width() const override { return mat.get_width(); }
 	
 	concrete_matrix_wrap_impl(const matrix_ref<T,matrix_type>& M) : mat(M) {}
+
+    matrix_ref<T,matrix_type> get_mat(){
+        return mat;
+    }
 	
 	private:
 	matrix_ref<T,matrix_type> mat;
@@ -263,21 +267,11 @@ class concrete_matrix_wrap_impl : public matrix_wrap_impl<T> {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 template<typename T, class decorated>
 class concrete_matrix_wrap_impl<T,Diagonal_matrix<decorated>> : public matrix_wrap_impl<T> {
 	public:
-	T& get(unsigned i, unsigned j) override { 
+	T& get(unsigned i, unsigned j) override {
+	    //TODO Why this stuff
 		static T result;
 		return result=mat(i,j); 
 		}
@@ -345,23 +339,14 @@ class concrete_matrix_wrap_impl<T,Diagonal_matrix<decorated>> : public matrix_wr
 	unsigned get_width() const override { return mat.get_width(); }
 	
 	concrete_matrix_wrap_impl(const matrix_ref<T,Diagonal_matrix<decorated>>& M) : mat(M) {}
+
+    matrix_ref<T,Diagonal_matrix<decorated>> get_mat(){
+	    return mat;
+	}
 	
 	private:
 	matrix_ref<T,Diagonal_matrix<decorated>> mat;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 template<typename T>
 class matrix_wrap {
@@ -390,8 +375,12 @@ class matrix_wrap {
 		
 	unsigned get_height() const { return pimpl->get_height(); }
 	unsigned get_width() const { return pimpl->get_width(); }
-	
-	private:
+
+
+    auto get_mat(){
+	    return pimpl->get_mat();
+	}
+    private:
 	matrix_wrap(std::unique_ptr<matrix_wrap_impl<T>>&& impl) : pimpl(std::move(impl)) {}
 	
 	std::unique_ptr<matrix_wrap_impl<T>> pimpl;

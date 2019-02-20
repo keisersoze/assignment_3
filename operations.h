@@ -4,6 +4,7 @@
 #include<type_traits>
 #include<list>
 #include <thread>
+#include "parallel_multiplication.h"
 
 #include"matrix.h"
 
@@ -185,7 +186,7 @@ class matrix_product {
 		}
 		return mat_max;
 	}
-	
+    /*
 	void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
 		const unsigned height = result.get_height();
 		const unsigned width = result.get_width();
@@ -197,11 +198,8 @@ class matrix_product {
 				for (unsigned k=0; k!=span; ++k) 
 					result(i,j) += lhs(i,k)*rhs(k,j);
 				}					
-	}
+	}*/
 
-	void do_parallel_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs){
-		if()
-	}
 
 	
 	
