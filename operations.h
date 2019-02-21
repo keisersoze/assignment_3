@@ -205,11 +205,11 @@ class matrix_product {
 	
 	std::list<matrix_wrap<T>> matrices;
 	std::vector<unsigned> sizes;
-};	
+};
 
 
-
-matrix_product<T, matrix_ref<T,LType>::H, matrix_ref<T,RType>::W>
+template<typename T, class LType, class RType>
+matrix_product< T,  matrix_ref<T,LType>::H, matrix_ref<T,RType>::W>
 operator * (const matrix_ref<T,LType>& lhs, const matrix_ref<T,RType>& rhs) {
 	static_assert(matrix_ref<T,LType>::W*matrix_ref<T,LType>::H==0 || matrix_ref<T,LType>::W==matrix_ref<T,LType>::H,
 				  "dimension mismatch in Matrix multiplication");
@@ -223,7 +223,7 @@ operator * (const matrix_ref<T,LType>& lhs, const matrix_ref<T,RType>& rhs) {
 
 
 template<typename T, unsigned h, unsigned w, class RType>
-matrix_product<T,h,matrix_ref<T,RType>::W> 
+matrix_product<T, h, matrix_ref<T,RType>::W>
 operator * (matrix_product<T,h,w>&& lhs, const matrix_ref<T,RType>& rhs) {
 	static_assert(w*matrix_ref<T,RType>::H==0 || w==matrix_ref<T,RType>::H, 
 			"dimension mismatch in Matrix multiplication");

@@ -180,6 +180,8 @@ struct matrix_wrap_impl {
 	virtual std::unique_ptr<iterator_impl<T>> end() = 0;
 	virtual std::unique_ptr<const_iterator_impl<T>> begin() const = 0; 
 	virtual std::unique_ptr<const_iterator_impl<T>> end() const = 0;
+
+	virtual bool is_diagonal() const = 0;
 	
 	virtual unsigned get_height() const = 0;
 	virtual unsigned get_width() const = 0;
@@ -254,8 +256,12 @@ class concrete_matrix_wrap_impl : public matrix_wrap_impl<T> {
 	
 	unsigned get_height() const override { return mat.get_height(); }
 	unsigned get_width() const override { return mat.get_width(); }
-	
-	concrete_matrix_wrap_impl(const matrix_ref<T,matrix_type>& M) : mat(M) {}
+
+    bool is_diagonal() const override {
+        return false;
+    }
+
+    concrete_matrix_wrap_impl(const matrix_ref<T,matrix_type>& M) : mat(M) {}
 
     matrix_ref<T,matrix_type> get_mat(){
         return mat;
@@ -274,7 +280,7 @@ class concrete_matrix_wrap_impl<T,Diagonal_matrix<decorated>> : public matrix_wr
 	    //TODO Why this stuff
 		static T result;
 		return result=mat(i,j); 
-		}
+	}
 	const T& get(unsigned i, unsigned j) const override { return mat(i,j); }
 	
 	std::unique_ptr<matrix_wrap_impl<T>> clone() const override {
@@ -340,6 +346,10 @@ class concrete_matrix_wrap_impl<T,Diagonal_matrix<decorated>> : public matrix_wr
 	
 	concrete_matrix_wrap_impl(const matrix_ref<T,Diagonal_matrix<decorated>>& M) : mat(M) {}
 
+    bool is_diagonal() const override {
+        return true;
+    }
+
     matrix_ref<T,Diagonal_matrix<decorated>> get_mat(){
 	    return mat;
 	}
@@ -378,6 +388,9 @@ class matrix_wrap {
 
 
     auto get_mat(){
+	    if (pimpl->is_diagonal()){
+            concrete_matrix_wrap_impl<T,Diagonal_matrix<decorated>>
+	    }
 	    return pimpl->get_mat();
 	}
     private:

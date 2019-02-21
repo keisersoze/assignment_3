@@ -37,7 +37,7 @@ void row_multiply(matrix_wrap<T> &result, int row_start, int row_end, const matr
 }
 
 
-template<typename T, class LType, class RType>
+template<typename T>
 void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
     const unsigned height = result.get_height();
     const unsigned width = result.get_width();
