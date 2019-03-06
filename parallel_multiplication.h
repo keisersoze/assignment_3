@@ -46,8 +46,10 @@ void row_multiply(matrix_wrap<T> &result, int row_start, const matrix_wrap<T> &l
     int i;
 
     for (i = 0; i < lhs.get_width(); i += BLOCK_DIM) {
-        std::thread t(real_multiplication(result, row_start, i, lhs, rhs));
-        v.push_back(t);
+        for (int j = 0; j < rhs.get_width(); j += BLOCK_DIM) {
+            std::thread t(real_multiplication(result, row_start, i, lhs, rhs));
+            v.push_back(t);
+        }
     }
 
     for (int j = 0; j < v.size(); ++j) {
