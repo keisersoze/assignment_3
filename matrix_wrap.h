@@ -165,6 +165,15 @@ template<typename T>
 struct matrix_wrap_impl {
 	virtual T& get(unsigned i, unsigned j) = 0;
 	virtual const T& get(unsigned i, unsigned j) const = 0;
+
+	matrix<T, BLOCK_DIM, BLOCK_DIM> get_submatrix(window_spec spec) {
+		matrix<T, BLOCK_DIM, BLOCK_DIM> m;
+		for (int i = 0; i < BLOCK_DIM; i++) {
+			for (int j = 0; j < BLOCK_DIM; j++) {
+				m(i - spec.row_start, j - spec.col_start) = get(i, j);
+			}
+		}
+	}
 	
 	virtual std::unique_ptr<matrix_wrap_impl<T>> clone() const = 0;
 	virtual ~matrix_wrap_impl() {}
@@ -364,6 +373,10 @@ class matrix_wrap {
 	
 	matrix_wrap(const matrix_wrap<T>& X) : pimpl(X.pimpl->clone()) {}
 	matrix_wrap transpose() const { return matrix_wrap(pimpl->transpose()); }
+
+	matrix<T, BLOCK_DIM, BLOCK_DIM> get_submatrix(window_spec spec) {
+		return pimpl -> get_submatrix(spec);
+	}
 	
 	
 	template<class matrix_type>

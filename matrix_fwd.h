@@ -1,6 +1,7 @@
 #ifndef _MATRIX_FWD_H_
 #define _MATRIX_FWD_H_
 
+#define BLOCK_DIM 2
 
 struct Plain;
 template<unsigned height, unsigned width> struct Sized;
