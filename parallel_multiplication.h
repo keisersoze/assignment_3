@@ -10,25 +10,24 @@
 #include"matrix_fwd.h"
 #include <thread>
 
-
-template<typename T, class LType, class RType>
-void real_multiplication(matrix_wrap<T> &result, window_spec result_window_spec, matrix<T> &l, matrix<T> &r) {
-    int l_real_block_height = BLOCK_DIM, l_real_block_width = BLOCK_DIM;
-    int r_real_block_height = BLOCK_DIM, r_real_block_width = BLOCK_DIM;
-
-
-    /* for (unsigned i = window_spec.row_start; i != window_spec.row_end; ++i) {
-        for (unsigned j = window_spec.col_start; j != window_spec.col_end; ++j) {
+template<typename T>
+void real_multiplication(matrix_wrap<T> &result, window_spec result_window_spec, matrix<T> &lhs, matrix<T> &rhs) {
+    int height = result_window_spec.row_end - result_window_spec.row_start;
+    int width = result_window_spec.col_end - result_window_spec.col_start;
+    int span = lhs.get_height();
+    for (unsigned i = 0; i != height; ++i) {
+        for (unsigned j = 0; j != width; ++j) {
             for (unsigned k = 0; k != span; ++k)
-                result(i, j) += lhs(i, k) * rhs(k, j);
+                result(i + result_window_spec.row_start, j + result_window_spec.col_start) += lhs(i, k) * rhs(k, j);
         }
-    } */
+    }
 }
 
-//TODO find a name for this function
 template<typename T>
-void function(matrix_wrap<T> &result, int row_start_rhs, matrix<T> lhs_sub, const matrix_wrap<T> &rhs) {
+void thread_multiplication(matrix_wrap<T> &result, window_spec l_window_spec, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+    int row_start_rhs = l_window_spec.col_start;
     std::vector<std::thread> v;
+    matrix<T> lhs_sub = lhs.get_submatrix(l_window_spec);
 
     window_spec r_wlindow_spec;
     r_wlindow_spec.row_start = row_start_rhs;
@@ -49,9 +48,27 @@ void function(matrix_wrap<T> &result, int row_start_rhs, matrix<T> lhs_sub, cons
             r_wlindow_spec.col_end = rhs.get_width() - 1;
         }
 
-        
-        std::thread t(real_multiplication(result, , lhs_sub, rhs.get_submatrix(r_wlindow_spec)));
+        result_window_spec.row_start = l_window_spec.row_start;
+        result_window_spec.col_start = r_wlindow_spec.col_start;
+        if (result_window_spec.row_start + BLOCK_DIM < result.get_height()) {
+            result_window_spec.row_end = result_window_spec.row_start + BLOCK_DIM;
+        } else {
+            result_window_spec.row_end = result.get_height() - 1;
+        }
+
+        if (result_window_spec.col_start + BLOCK_DIM < result.get_width()) {
+            result_window_spec.col_end = result_window_spec.col_start + BLOCK_DIM;
+        } else {
+            result_window_spec.col_end = result.get_width() - 1;
+        }
+        std::thread t(real_multiplication(result, result_window_spec, lhs_sub, rhs.get_submatrix(r_wlindow_spec)));
+        v.push_back(t);
     }
+
+    for (int j = 0; j < v.size(); ++j) {
+        v[j].join();
+    }
+
 }
 
 template<typename T>
@@ -76,7 +93,7 @@ void row_multiply(matrix_wrap<T> &result, int row_start, const matrix_wrap<T> &l
         } else {
             l_wlindow_spec.col_end = lhs.get_width() - 1;
         }
-        function(result, lhs.get_submatrix(l_wlindow_spec), rhs);
+        function(result, l_wlindow_spec, lhs, rhs);
     }
 }
 
