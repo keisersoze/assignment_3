@@ -526,7 +526,7 @@ class matrix<T> : public matrix_ref<T,Plain> {
 		this->width = width;
 		data = std::make_shared<std::vector<T>>(width*height);
 		
-		std::cerr << "matrix constructor\n";
+		 // std::cerr << "matrix constructor\n";
 	}
 	
 	matrix(const matrix<T>& X) {
@@ -535,7 +535,7 @@ class matrix<T> : public matrix_ref<T,Plain> {
 		data = std::make_shared<std::vector<T>>(width*height);
 		*data = *(X.data);
 		
-		std::cerr << "matrix copy constructor\n";
+		// std::cerr << "matrix copy constructor\n";
 	}
 	
 	matrix(matrix<T>&& X) {
@@ -543,7 +543,7 @@ class matrix<T> : public matrix_ref<T,Plain> {
 		width = X.width;
 		data = std::move(X.data);
 		
-		std::cerr << "matrix move constructor\n";
+		// std::cerr << "matrix move constructor\n";
 	}
 	
 	template<class matrix_type>
@@ -562,7 +562,7 @@ class matrix<T> : public matrix_ref<T,Plain> {
 			++source;
 		}
 		
-		std::cerr << "matrix foreign constructor\n";
+		// std::cerr << "matrix foreign constructor\n";
 	}
 	
 	using matrix_ref<T,Plain>::H;

@@ -29,7 +29,7 @@ int main() {
     }
     std::cout << std::endl;
 
-    matrix<int, 4, 4> M3 = A * B;
+    matrix<int, 4, 4> M3 = A * B * B;
     for (int i = 0; i != 4; ++i) {
         for (int j = 0; j != 4; ++j)
             std::cout << M3(i, j) << ' ';
