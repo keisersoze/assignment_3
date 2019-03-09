@@ -186,7 +186,10 @@ class matrix_product {
 		}
 		return mat_max;
 	}
-    /*
+    /************************************************************
+     ****	Previous implementation of parallel multiplication	*
+     **** 	Ovverided in in parallel_multiplication.h			*
+     ************************************************************
 	void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
 		const unsigned height = result.get_height();
 		const unsigned width = result.get_width();
@@ -198,7 +201,8 @@ class matrix_product {
 				for (unsigned k=0; k!=span; ++k) 
 					result(i,j) += lhs(i,k)*rhs(k,j);
 				}					
-	}*/
+	}
+    **/
 
 
 	
