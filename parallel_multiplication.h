@@ -70,8 +70,8 @@ void thread_multiplication(const matrix_wrap<T> &result, window_spec l_window_sp
 }
 
 template<typename T>
-void row_multiply(const matrix_wrap<T> &result, int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
-    window_spec l_wlindow_spec;
+void row_multiply(const matrix_wrap<T> &result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+    window_spec l_wlindow_spec = {0,0,0,0};
 
     l_wlindow_spec.row_start = row_start;
 
@@ -81,7 +81,7 @@ void row_multiply(const matrix_wrap<T> &result, int row_start, const matrix_wrap
         l_wlindow_spec.row_end = lhs.get_height() - 1;
     }
 
-    for (int i = 0; i < lhs.get_width(); i += BLOCK_DIM) {
+    for (unsigned int i = 0; i < lhs.get_width(); i += BLOCK_DIM) {
         l_wlindow_spec.col_start = i;
 
         //set window_spec col_end
@@ -119,8 +119,8 @@ void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) 
     }
 
     // join threads
-    for (int j = 0; j < v.size(); ++j) {
-        v[j].join();
+    for (auto &j : v) {
+        j.join();
     }
 }
 
