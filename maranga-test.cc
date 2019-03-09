@@ -2,7 +2,6 @@
 #include <vector>
 #include <ctime>
 #include <memory>
-#include<iostream>
 
 #include"matrix.h"
 #include"matrix_wrap.h"

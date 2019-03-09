@@ -170,7 +170,7 @@ struct matrix_wrap_impl {
 		matrix<T> m(spec.row_end - spec.row_start, spec.col_end - spec.col_start);
 		for (int i = 0; i < BLOCK_DIM; i++) {
 			for (int j = 0; j < BLOCK_DIM; j++) {
-				m(i - spec.row_start, j - spec.col_start) = get(i, j);
+				m(i + spec.row_start, j + spec.col_start) = get(i, j);
 			}
 		}
 		return m;
