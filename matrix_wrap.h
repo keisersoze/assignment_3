@@ -173,6 +173,7 @@ struct matrix_wrap_impl {
 				m(i - spec.row_start, j - spec.col_start) = get(i, j);
 			}
 		}
+		return m;
 	}
 	
 	virtual std::unique_ptr<matrix_wrap_impl<T>> clone() const = 0;
@@ -374,7 +375,7 @@ class matrix_wrap {
 	matrix_wrap(const matrix_wrap<T>& X) : pimpl(X.pimpl->clone()) {}
 	matrix_wrap transpose() const { return matrix_wrap(pimpl->transpose()); }
 
-	matrix<T> get_submatrix(window_spec spec) {
+	matrix<T> get_submatrix(window_spec spec) const {
 		return pimpl -> get_submatrix(spec);
 	}
 	
