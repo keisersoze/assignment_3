@@ -184,7 +184,7 @@ struct matrix_wrap_impl {
         matrix<T> m(height, width);
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
-                m(i + spec.row_start, j + spec.col_start) = get(i, j);
+                m(i, j) = get(i + spec.row_start, j + spec.col_start);
             }
         }
         return m;
@@ -400,6 +400,7 @@ public:
     const_iterator end() const { return pimpl->end(); }
 
     matrix_wrap(const matrix_wrap<T> &X) : pimpl(X.pimpl->clone()) {}
+
 
     matrix_wrap transpose() const { return matrix_wrap(pimpl->transpose()); }
 
