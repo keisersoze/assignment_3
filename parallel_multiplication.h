@@ -64,36 +64,44 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
         }
         std::thread t(real_multiplication<T>, result, result_window_spec, lhs_sub, rhs.get_submatrix(r_window_spec));
         v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
-    }
+//        allocated_threads += 1;
+//        if (allocated_threads == max_thread) {
+//            // join threads
+//            for (auto &j : v) {
+//                j.join();
+//            }
+//            v.clear();
+//            allocated_threads = 0;
+//        }
 
+    }
     for (auto &j : v) {
         j.join();
     }
-
 }
 
+/**
+ * Multiply a row of blocks of lhs with a column of blocks of rhs
+ * @tparam T
+ * @param result the matrix where the result of the multiplication are saved
+ * @param row_start the start index of the row of blocks
+ * @param lhs the left matrix
+ * @param rhs the right matrix
+ */
 template<typename T>
 void
-row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+compute_resulting_row(matrix_wrap<T> result,
+                      unsigned int row_start,
+                      const matrix_wrap<T> &lhs,
+                      const matrix_wrap<T> &rhs) {
     window_spec l_wlindow_spec = {0, 0, 0, 0};
     l_wlindow_spec.row_start = row_start;
     std::vector<std::thread> v;
-    const unsigned int max_thread = std::thread::hardware_concurrency();
     if (row_start + BLOCK_DIM < lhs.get_height() - 1) {
         l_wlindow_spec.row_end = row_start + BLOCK_DIM - 1;
     } else {
         l_wlindow_spec.row_end = lhs.get_height() - 1;
     }
-    unsigned int allocated_threads = 0;
     for (unsigned int i = 0; i < lhs.get_width(); i += BLOCK_DIM) {
         l_wlindow_spec.col_start = i;
 
@@ -104,59 +112,32 @@ row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T>
         } else {
             l_wlindow_spec.col_end = lhs.get_width() - 1;
         }
-        std::thread t(thread_multiplication<T>,result, l_wlindow_spec, lhs, rhs);
-        v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
-    }
-    for (auto &j : v) {
-        j.join();
+        thread_multiplication<T>(result, l_wlindow_spec, lhs, rhs);
     }
 }
+
 
 
 template<typename T>
 void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
     const unsigned height = result.get_height();
     const unsigned width = result.get_width();
-    const unsigned span = lhs.get_width();
-    const unsigned int max_thread = std::thread::hardware_concurrency();
 
-    assert(span == rhs.get_height());
+    assert(lhs.get_width() == rhs.get_height());
 
     std::vector<std::thread> v;
     int i;
 
+    // Initialize the result matrix with all 0s
     for (i = 0; i != height; ++i) {
         for (unsigned j = 0; j != width; ++j) {
             result(i, j) = 0;
         }
     }
-    unsigned int allocated_threads = 0;
-    for (i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
-        std::thread t(row_multiply<T>, result, i, lhs, rhs);
-        v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
-    }
-    for (auto &j : v) {
-        j.join();
-    }
 
+    for (i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
+        compute_resulting_row<T>(result, i, lhs, rhs);
+    }
 
 }
 
