@@ -4,6 +4,7 @@
 #include "matrix.h"
 #include "matrix_wrap.h"
 #include "matrix_fwd.h"
+#include "thread_pool.h"
 #include <thread>
 #include <iostream>
 
@@ -24,7 +25,7 @@ void real_multiplication(matrix_wrap<T> result, window_spec result_window_spec, 
 
 template<typename T>
 void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, const matrix_wrap<T> &lhs,
-                           const matrix_wrap<T> &rhs) {
+                           const matrix_wrap<T> &rhs,  ThreadPool& threadPool) {
     unsigned int row_start_rhs = l_window_spec.col_start;
     std::vector<std::thread> v;
     matrix<T> lhs_sub = lhs.get_submatrix(l_window_spec);
@@ -62,28 +63,15 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
         } else {
             result_window_spec.col_end = result.get_width() - 1;
         }
-        std::thread t(real_multiplication<T>, result, result_window_spec, lhs_sub, rhs.get_submatrix(r_window_spec));
-        v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
+        threadPool.submit(real_multiplication<T>, result, result_window_spec, lhs_sub, rhs.get_submatrix(r_window_spec));
     }
 
-    for (auto &j : v) {
-        j.join();
-    }
 
 }
 
 template<typename T>
 void
-row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs,  ThreadPool& threadPool) {
     window_spec l_wlindow_spec = {0, 0, 0, 0};
     l_wlindow_spec.row_start = row_start;
     std::vector<std::thread> v;
@@ -104,26 +92,15 @@ row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T>
         } else {
             l_wlindow_spec.col_end = lhs.get_width() - 1;
         }
-        std::thread t(thread_multiplication<T>,result, l_wlindow_spec, lhs, rhs);
-        v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
-    }
-    for (auto &j : v) {
-        j.join();
+
+        threadPool.submit(thread_multiplication<T>,result, l_wlindow_spec, lhs, rhs, threadPool);
+
     }
 }
 
 
 template<typename T>
-void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
+void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs,  ThreadPool& threadPool) {
     const unsigned height = result.get_height();
     const unsigned width = result.get_width();
     const unsigned span = lhs.get_width();
@@ -141,22 +118,8 @@ void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) 
     }
     unsigned int allocated_threads = 0;
     for (i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
-        std::thread t(row_multiply<T>, result, i, lhs, rhs);
-        v.push_back(std::move(t));
-        if (allocated_threads > max_thread){
-            // join threads
-            for (auto &j : v) {
-                j.join();
-            }
-            v.clear();
-            allocated_threads = 0;
-        }
-        allocated_threads += 1;
+        threadPool.submit(row_multiply<T>, result, i, lhs, rhs, threadPool);
     }
-    for (auto &j : v) {
-        j.join();
-    }
-
 
 }
 
