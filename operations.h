@@ -85,12 +85,11 @@ operator + (matrix<T,H,W>&& left, const matrix_ref<U,RType>& right) {
 template<typename T,unsigned h, unsigned w>
 class matrix_product {
 	public:
-    std::list<matrix_wrap<T>> matrices;
-    std::vector<unsigned> sizes;
 
 	static constexpr unsigned H=h;
 	static constexpr unsigned W=w;
-
+    template<typename T2,unsigned h2, unsigned w2>
+    friend class matrix_product;
 
 
 	operator matrix<T>() {
@@ -205,6 +204,9 @@ class matrix_product {
 				}
 	}
     **/
+
+    std::list<matrix_wrap<T>> matrices;
+    std::vector<unsigned> sizes;
 };
 
 
