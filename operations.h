@@ -169,7 +169,6 @@ private:
 
     void resolve_one() {
         ThreadPool thread_pool(8);
-        thread_pool.init();
         typename std::list<matrix_wrap<T>>::iterator lhs = find_max();
         typename std::list<matrix_wrap<T>>::iterator rhs = lhs;
         ++rhs;
