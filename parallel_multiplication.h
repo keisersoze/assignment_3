@@ -59,7 +59,8 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
         } else {
             result_window_spec.col_end = result.get_width() - 1;
         }
-        real_multiplication<T> (result, result_window_spec, lhs_sub, rhs.get_submatrix(r_window_spec));
+        ThreadPool::getSingleton().enqueue(real_multiplication<T>, result, result_window_spec, lhs_sub,
+                rhs.get_submatrix(r_window_spec));
     }
 
 
@@ -86,14 +87,14 @@ row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T>
             l_wlindow_spec.col_end = lhs.get_width() - 1;
         }
 
-        thread_multiplication<T>(result, l_wlindow_spec, lhs, rhs);
+        ThreadPool::getSingleton().enqueue(thread_multiplication<T>, result, l_wlindow_spec, lhs, rhs);
 
     }
 }
 
 
 template<typename T>
-void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs,  ThreadPool &threadPool) {
+void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
     const unsigned height = result.get_height();
     const unsigned width = result.get_width();
     const unsigned span = lhs.get_width();
@@ -107,7 +108,7 @@ void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs, 
         }
     }
     for (i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
-        threadPool.enqueue(row_multiply<T>, result, i, lhs, rhs, i);
+        ThreadPool::getSingleton().enqueue(row_multiply<T>, result, i, lhs, rhs, i);
     }
 
 }

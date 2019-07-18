@@ -15,14 +15,19 @@
 #include <functional>
 #include <stdexcept>
 
+#define N_THREAD 8
+
 class ThreadPool {
 public:
-    ThreadPool(size_t);
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args)
     -> std::future<typename std::result_of<F(Args...)>::type>;
     ~ThreadPool();
+
+    static ThreadPool& getSingleton();
 private:
+    ThreadPool(size_t);
+
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
     // the task queue
@@ -42,7 +47,7 @@ inline ThreadPool::ThreadPool(size_t threads)
         workers.emplace_back(
                 [this]
                 {
-                    for(;;)
+                    while(true)
                     {
                         std::function<void()> task;
 
@@ -85,6 +90,12 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
     }
     condition.notify_one();
     return res;
+}
+
+inline ThreadPool& ThreadPool::getSingleton() {
+    static ThreadPool singleton(N_THREAD);
+
+    return singleton;
 }
 
 // the destructor joins all threads

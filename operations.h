@@ -168,13 +168,12 @@ private:
     void resolve() { while (matrices.size() > 2) resolve_one(); }
 
     void resolve_one() {
-        ThreadPool thread_pool(8);
         typename std::list<matrix_wrap<T>>::iterator lhs = find_max();
         typename std::list<matrix_wrap<T>>::iterator rhs = lhs;
         ++rhs;
         typename std::list<matrix_wrap<T>>::iterator result = matrices.emplace(lhs, matrix<T>(lhs->get_height(),
                                                                                               rhs->get_width()));
-        do_multiply(*result, *lhs, *rhs, thread_pool);
+        do_multiply(*result, *lhs, *rhs);
         matrices.erase(lhs);
         matrices.erase(rhs);
     }
