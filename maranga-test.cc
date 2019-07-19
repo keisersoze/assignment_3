@@ -38,7 +38,6 @@ int main() {
 	initializeCells(mG, 54, 11);
 	matrix<long long, 1001, 400> mH;
 	initializeCells(mH, 66, 11);
-
 	/*std::cout << "Matrix A" << std::endl;
 	mA.print("%2d");
 
