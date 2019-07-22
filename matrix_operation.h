@@ -7,30 +7,45 @@
 
 #include "matrix_wrap.h"
 
-template<typename T, unsigned h, unsigned w>
+template<typename T, unsigned H, unsigned W>
 class matrix_operation {
-    virtual operator matrix<T>() = 0;
+    virtual matrix<T> resolve_all() = 0;
 
-    virtual operator matrix<T, h, w>() = 0;
+    virtual unsigned get_height() = 0;
+
+    virtual unsigned get_width() = 0;
 };
 
-template<typename T, unsigned h, unsigned w>
-class matrix_singleton : matrix_operation<T, h, w> {
-    matrix_singleton(matrix_wrap<T> &m) {
+template<typename T>
+class matrix_operation<T, 0, 0> {
+    virtual matrix<T> resolve_all() = 0;
+
+    virtual unsigned get_height() = 0;
+
+    virtual unsigned get_width() = 0;
+};
+
+template<typename T>
+class matrix_singleton : matrix_operation<T, 0, 0> {
+    matrix_singleton(matrix<T> &m) {
         this->singleton = m;
     }
 
-    operator matrix<T>() {
+    matrix<T> resolve_all() {
         return this->singleton;
     }
 
-    operator matrix<T, h, w>() {
-        return this->singleton;
+    virtual unsigned get_height() {
+        return this->singleton.get_height();
+    }
+
+    virtual unsigned get_width() {
+        return this->singleton.get_width();
     }
 
 
 private:
-    matrix_wrap<T> singleton;
+    matrix<T> singleton;
 };
 
 

@@ -7,4 +7,4 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O3")
 include_directories(.)
 
 add_executable(assignment_3
-        maranga-test.cc thread_pool.h matrix_sum.h matrix_product.h matrix_operation.h)
+        maranga-test.cc thread_pool.h matrix_sum.h matrix_product.h matrix_operation.h giammy_test.cpp)

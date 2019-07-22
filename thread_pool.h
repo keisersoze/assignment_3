@@ -74,7 +74,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args)
 -> std::future<typename std::result_of<F(Args...)>::type> {
     using return_type = typename std::result_of<F(Args...)>::type;
 
-    auto task = std::make_unique<std::packaged_task<return_type()> >(
+    auto task = std::make_shared<std::packaged_task<return_type()> >(
             std::bind(std::forward<F>(f), std::forward<Args>(args)...)
     );
 
@@ -87,7 +87,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args)
             throw std::runtime_error("enqueue on stopped ThreadPool");
         }
         //from C++14
-        tasks.emplace([task{move(task)}]() { (*task)(); });
+        tasks.emplace([task](){ (*task)(); });
     }
     condition.notify_one();
     return res;
