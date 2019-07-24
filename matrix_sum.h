@@ -13,87 +13,10 @@
 
 #include "thread_pool.h"
 
-//TODO useless struct
-template<typename T, typename U>
-struct op_traits {
-    typedef decltype(T() + U()) sum_type;
-    typedef decltype(T() * U()) prod_type;
-};
-
-//template<typename T, class LType, typename U, class RType>
-//std::enable_if_t<matrix_ref<T, LType>::H * matrix_ref<U, RType>::H == 0, matrix<typename op_traits<T, U>::sum_type>>
-//operator+(const matrix_ref<T, LType> &left, const matrix_ref<U, RType> &right) {
-//    if (left.get_height() != right.get_height() || left.get_width() != right.get_width())
-//        throw std::domain_error("dimension mismatch in Matrix addition");
-//
-//    const unsigned height = left.get_height();
-//    const unsigned width = left.get_width();
-//    matrix<typename op_traits<T, U>::sum_type> result(height, width);
-//    for (unsigned i = 0; i != height; ++i)
-//        for (unsigned j = 0; j != width; j++)
-//            result(i, j) = left(i, j) + right(i, j);
-//
-//    return result;
-//}
-//
-//
-//template<typename T, typename U, class RType>
-//std::enable_if_t<std::is_same<T, typename op_traits<T, U>::sum_type>::value, matrix<T>>
-//operator+(matrix<T> &&left, const matrix_ref<U, RType> &right) {
-//    if (left.get_height() != right.get_height() || left.get_width() != right.get_width())
-//        throw std::domain_error("dimension mismatch in Matrix addition");
-//
-//    const unsigned height = left.get_height();
-//    const unsigned width = left.get_width();
-//    for (unsigned i = 0; i != height; ++i)
-//        for (unsigned j = 0; j != width; j++)
-//            left(i, j) += right(i, j);
-//
-//    return std::move(left);
-//}
-//
-//
-//template<typename T, class LType, typename U, class RType>
-//std::enable_if_t<matrix_ref<T, LType>::H * matrix_ref<U, RType>::H !=
-//                 0, matrix<typename op_traits<T, U>::sum_type, matrix_ref<T, LType>::H, matrix_ref<T, LType>::W>>
-//operator+(const matrix_ref<T, LType> &left, const matrix_ref<U, RType> &right) {
-//    static_assert(
-//            matrix_ref<T, LType>::H == matrix_ref<U, RType>::H && matrix_ref<T, LType>::W == matrix_ref<U, RType>::W,
-//            "dimension mismatch in Matrix addition");
-//
-//    const unsigned height = left.get_height();
-//    const unsigned width = left.get_width();
-//    matrix<typename op_traits<T, U>::sum_type, matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
-//    for (unsigned i = 0; i != height; ++i)
-//        for (unsigned j = 0; j != width; j++)
-//            result(i, j) = left(i, j) + right(i, j);
-//
-//    return result;
-//}
-//
-//
-//template<typename T, unsigned H, unsigned W, typename U, class RType>
-//std::enable_if_t<
-//        matrix_ref<U, RType>::H != 0 && std::is_same<T, typename op_traits<T, U>::sum_type>::value, matrix<T, H, W>>
-//operator+(matrix<T, H, W> &&left, const matrix_ref<U, RType> &right) {
-//    static_assert(H == matrix_ref<U, RType>::H && W == matrix_ref<U, RType>::W,
-//                  "dimension mismatch in Matrix addition");
-//
-//    for (unsigned i = 0; i != H; ++i) {
-//        for (unsigned j = 0; j != W; j++) {
-//            left(i, j) += right(i, j);
-//        }
-//    }
-//
-//    return std::move(left);
-//}
 
 template<typename T, unsigned h, unsigned w>
-class matrix_sum : matrix_operation<T, h, w> {
+class matrix_sum : matrix_operation_s<T, h, w> {
 public:
-
-    static constexpr unsigned H = h;
-    static constexpr unsigned W = w;
 
     template<typename T2, unsigned h2, unsigned w2>
     friend
@@ -141,51 +64,35 @@ public:
         return resolve_all();
     }
 
-//    template<unsigned h2, unsigned w2>
-//    operator matrix<T, h2, w2>() {
-//        static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
-//        assert(h2 == get_height() && w2 == get_width());
-//        resolve();
-//        matrix_wrap<T> lhs = matrices.front(), rhs = matrices.back();
-//        const unsigned span = lhs.get_width();
-//        assert(span == rhs.get_height());
-//        matrix<T, h2, w2> result;
-//        for (unsigned i = 0; i != h2; ++i)
-//            for (unsigned j = 0; j != w2; ++j) {
-//                result(i, j) = 0;
-//                for (unsigned k = 0; k != span; ++k)
-//                    result(i, j) += lhs(i, k) * rhs(k, j);
-//            }
-//
-//        std::cerr << "sized product conversion\n";
-//        return result;
-//    }
-
     unsigned get_height() const { return matrices.front().get_height(); }
 
     unsigned get_width() const { return matrices.back().get_width(); }
 
-    template<typename V, typename U, class LType, class RType>
-    friend auto operator+(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
+    //TODO related to matrix_sum() constructor
+    //template<typename V, typename U, class LType, class RType>
+    //friend matrix_sum<decltype(T() + U()), 0, 0> operator+(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
 
-    template<typename V, typename U, unsigned h2, unsigned w2, class RType>
-    friend auto operator+(matrix_operation<V, h2, w2> &&lhs, const matrix_ref<U, RType> &rhs);
+    //template, typename V, typename U, unsigned h2, unsigned w2, class RType>
+    //friend  operator+(matrix_operation_s<V, h2, w2> &&lhs, const matrix_ref<U, RType> &rhs);
 
     matrix_sum(matrix_sum<T, h, w> &&X) = default;
 
 
-private:
-
+    //TODO make the constructor private and add function
     matrix_sum() = default;
 
-    template<unsigned w2>
-    matrix_sum(matrix_sum<T, h, w2> &&X) : matrices(std::move(X.matrices)), sizes(std::move(X.sizes)) {}
 
     template<class matrix_type>
     void add(matrix_ref<T, matrix_type> mat) {
         matrices.emplace_back(mat);
         sizes.push_back(mat.get_width());
     }
+
+
+private:
+
+    template<unsigned w2>
+    matrix_sum(matrix_sum<T, h, w2> &&X) : matrices(std::move(X.matrices)), sizes(std::move(X.sizes)) {}
 
 
     void resolve() { while (matrices.size() > 2) resolve_one(); }
@@ -218,60 +125,192 @@ private:
         return mat_max;
     }
 
-    std::list<matrix_operation<T, 0, 0>> matrices;
+    std::list<matrix_operation<T>> matrices;
     std::vector<unsigned> sizes;
 
 };
 
-
+/**
+ * Static overload
+ * @tparam T
+ * @tparam U
+ * @tparam LType
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
 template<typename T, typename U, class LType, class RType>
-auto operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
-    static_assert(matrix_ref<T, LType>::W * matrix_ref<T, RType>::W == 0 ||
-                  (matrix_ref<T, LType>::H == matrix_ref<T, RType>::H &&
-                   matrix_ref<T, LType>::W == matrix_ref<T, RType>::W),
+std::enable_if_t
+        <matrix_ref<T, LType>::H != 0 && matrix_ref<U, RType>::H != 0,
+                matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W>>
+operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
+    static_assert((matrix_ref<T, LType>::W == matrix_ref<T, RType>::W) &&
+                  (matrix_ref<T, LType>::H == matrix_ref<T, RType>::H),
                   "dimension mismatch in Matrix addition");
-    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width())
-        throw std::domain_error("dimension mismatch in Matrix addition");
-    if constexpr (matrix_ref<T, LType>::H != 0) {
-        matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
-        result.add(lhs);
-        result.add(rhs);
-        return result;
-    } else {
-        matrix_sum<decltype(T() + U()), matrix_ref<T, RType>::H, matrix_ref<T, RType>::W> result;
-        result.add(lhs);
-        result.add(rhs);
-        return result;
-    }
+    matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
 }
 
+/**
+ * Dynamic overload
+ * @tparam T
+ * @tparam U
+ * @tparam LType
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
+template<typename T, typename U, class LType, class RType>
+std::enable_if_t
+        <matrix_ref<T, LType>::H == 0 || matrix_ref<U, RType>::H == 0,
+                matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width())
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    // 0,0 because we loose the static information
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
+}
+/**
+ * Static overload for sum operation between matrix_operation and matrix_ref
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
-auto operator+(matrix_operation<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+std::enable_if_t
+        <h != 0 && matrix_ref<U, RType>::H != 0,
+                matrix_sum<decltype(T() + U()), h, w>>
+operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 ||
                   (matrix_ref<T, RType>::H == h &&
                    matrix_ref<T, RType>::W == w),
                   "dimension mismatch in Matrix multiplication");
-
-    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width())
-        throw std::domain_error("dimension mismatch in Matrix addition");
-
-    if constexpr (matrix_ref<T, RType>::H != 0) {
-        matrix_sum<decltype(T() + U()), matrix_ref<T, RType>::H, matrix_ref<T, RType>::W> result;
-        result.add(lhs);
-        result.add(rhs);
-        return result;
-    } else {
-        matrix_sum<decltype(T() + U()), matrix_ref<T, RType>::H, matrix_ref<T, RType>::W> result;
-        result.add(lhs);
-        result.add(rhs);
-        return result;
-    }
+    matrix_sum<decltype(T() + U()), matrix_ref<T, RType>::H, matrix_ref<T, RType>::W> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
 }
-
+/**
+ * Dynamic overload for sum operation between matrix_operation and matrix_ref
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
-auto operator+(const matrix_ref<U, RType> &&lhs, matrix_operation<T, h, w> &rhs) {
+std::enable_if_t
+        <h == 0 || matrix_ref<U, RType>::H == 0,
+                matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
+}
+/**
+ * Static overload for sum operation between matrix_ref and matrix_operation
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t
+        <h != 0 && matrix_ref<U, RType>::H != 0,
+                matrix_sum<decltype(T() + U()), h, w>>
+operator+(const matrix_ref<U, RType> &lhs, matrix_operation_s<T, h, w> &rhs) {
     return rhs + lhs;
 }
+/**
+ * Dynamic overload for sum operation between matrix_ref and matrix_operation
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t
+        <h == 0 || matrix_ref<U, RType>::H == 0,
+                matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(const matrix_ref<U, RType> &lhs, matrix_operation_s<T, h, w> &rhs) {
+    return rhs + lhs;
+}
+
+/**
+ * Static overload for sum operation between matrix_operation_s and matrix_operation_s
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
+template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned wr, class RType>
+std::enable_if_t
+        <hl != 0 && hr != 0,
+                matrix_sum<decltype(T() + U()), hl, wl>>
+operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<T, hr, wr> &rhs) {
+    static_assert(hl == hr && wl ==wr, "dimension mismatch in Matrix addition");
+    matrix_sum<decltype(T() + U()), hl, wl> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
+
+}
+/**
+ * Dynamic overload for sum operation between matrix_ref and matrix_operation
+ * @tparam T
+ * @tparam U
+ * @tparam h
+ * @tparam w
+ * @tparam RType
+ * @param lhs
+ * @param rhs
+ * @return
+ */
+template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned wr, class RType>
+std::enable_if_t
+        <hl == 0 || hr == 0,
+                matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<T, hr, wr> &rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(lhs);
+    result.add(rhs);
+    return result;
+}
+
 
 
 #endif //ASSIGNMENT_3_MATRIX_SUM_H

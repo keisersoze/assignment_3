@@ -7,7 +7,8 @@
 
 #include "matrix_wrap.h"
 
-template<typename T, unsigned H, unsigned W>
+
+template<typename T>
 class matrix_operation {
     virtual matrix<T> resolve_all() = 0;
 
@@ -16,8 +17,11 @@ class matrix_operation {
     virtual unsigned get_width() = 0;
 };
 
-template<typename T>
-class matrix_operation<T, 0, 0> {
+template<typename T, unsigned h, unsigned w>
+class matrix_operation_s : matrix_operation<T> {
+    static constexpr unsigned H = h;
+    static constexpr unsigned W = w;
+
     virtual matrix<T> resolve_all() = 0;
 
     virtual unsigned get_height() = 0;
@@ -25,8 +29,9 @@ class matrix_operation<T, 0, 0> {
     virtual unsigned get_width() = 0;
 };
 
+
 template<typename T>
-class matrix_singleton : matrix_operation<T, 0, 0> {
+class matrix_singleton : matrix_operation<T> {
     matrix_singleton(matrix<T> &m) {
         this->singleton = m;
     }
