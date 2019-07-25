@@ -82,9 +82,9 @@ public:
     matrix_sum() = default;
 
 
-    template<class matrix_type>
-    void add(matrix_ref<T, matrix_type> mat) {
-        matrices.emplace_back(mat);
+    template<typename W>
+    void add(matrix_operation<W> &mat) {
+        matrices.emplace_back(&mat);
         sizes.push_back(mat.get_width());
     }
 
@@ -125,7 +125,7 @@ private:
         return mat_max;
     }
 
-    std::list<matrix_operation<T>> matrices;
+    std::list<std::unique_ptr<matrix_operation<T>>> matrices;
     std::vector<unsigned> sizes;
 
 };
@@ -149,8 +149,8 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
                   (matrix_ref<T, LType>::H == matrix_ref<T, RType>::H),
                   "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
-    result.add(lhs);
-    result.add(rhs);
+    result.add(matrix_singleton(lhs));
+    result.add(matrix_singleton(rhs));
     return result;
 }
 
@@ -173,8 +173,10 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     // 0,0 because we loose the static information
     matrix_sum<decltype(T() + U()), 0, 0> result;
-    result.add(lhs);
-    result.add(rhs);
+    matrix_singleton<T> lhs_wrapped  (lhs);
+    matrix_singleton<T> rhs_wrapped  (rhs);
+    result.add(lhs_wrapped);
+    result.add(rhs_wrapped);
     return result;
 }
 /**
@@ -199,7 +201,7 @@ operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
                   "dimension mismatch in Matrix multiplication");
     matrix_sum<decltype(T() + U()), matrix_ref<T, RType>::H, matrix_ref<T, RType>::W> result;
     result.add(lhs);
-    result.add(rhs);
+    result.add(matrix_singleton(rhs));
     return result;
 }
 /**
@@ -223,7 +225,7 @@ operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
     }
     matrix_sum<decltype(T() + U()), 0, 0> result;
     result.add(lhs);
-    result.add(rhs);
+    result.add(matrix_singleton(rhs));
     return result;
 }
 /**
@@ -278,7 +280,7 @@ template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned 
 std::enable_if_t
         <hl != 0 && hr != 0,
                 matrix_sum<decltype(T() + U()), hl, wl>>
-operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<T, hr, wr> &rhs) {
+operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<U, hr, wr> &rhs) {
     static_assert(hl == hr && wl ==wr, "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), hl, wl> result;
     result.add(lhs);
@@ -301,7 +303,7 @@ template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned 
 std::enable_if_t
         <hl == 0 || hr == 0,
                 matrix_sum<decltype(T() + U()), 0, 0>>
-operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<T, hr, wr> &rhs) {
+operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<U, hr, wr> &rhs) {
     if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }

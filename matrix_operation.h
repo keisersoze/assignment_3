@@ -10,6 +10,7 @@
 
 template<typename T>
 class matrix_operation {
+public:
     virtual matrix<T> resolve_all() = 0;
 
     virtual unsigned get_height() = 0;
@@ -31,12 +32,12 @@ class matrix_operation_s : matrix_operation<T> {
 
 
 template<typename T>
-class matrix_singleton : matrix_operation<T> {
-    matrix_singleton(matrix<T> &m) {
-        this->singleton = m;
-    }
+class matrix_singleton : public matrix_operation<T> {
+public:
+    template<class matrix_type>
+    matrix_singleton(const matrix_ref<T, matrix_type> &m): singleton(m){};
 
-    matrix<T> resolve_all() {
+    matrix_wrap<T> resolve_all() {
         return this->singleton;
     }
 
@@ -50,7 +51,7 @@ class matrix_singleton : matrix_operation<T> {
 
 
 private:
-    matrix<T> singleton;
+    matrix_wrap<T> singleton;
 };
 
 
