@@ -22,28 +22,22 @@ public:
     friend
     class matrix_sum;
 
-    unsigned get_height() {
-        return this->matrices.front().get_height();
-    }
-
-    unsigned get_width() {
-        return this->matrices.front().get_width();
-    }
-
-    matrix<T> resolve_all() {
+    matrix_wrap<T> resolve_all() {
         std::vector<std::future<matrix_wrap<T>>> futures;
-        for (auto aux : matrices) {
-            futures.insert(ThreadPool::getSingleton().enqueue(aux.resolve_all));
+        for (auto aux : operations) {
+            futures.push_back(ThreadPool::getSingleton().enqueue([&]() {return aux->resolve_all();}));
         }
 
+        /*
         unsigned height = get_height();
         unsigned width = get_width();
 
         matrix<T> result(get_height(), get_width());
 
+
         for (unsigned i; i < height; i++) {
             for (unsigned j; j < width; j++) {
-                result[i][j] = 0;
+                result(i,j) = 0;
             }
         }
 
@@ -51,22 +45,34 @@ public:
             auto aux = future.get();
             for (unsigned i; i < height; i++) {
                 for (unsigned j; j < width; j++) {
-                    result[i][j] += aux[i][j];
+                    result(i,j) += aux (i,j);
                 }
             }
         }
+         */
 
         // std::cerr << "addition conversion\n";
-        return result;
+
+        return matrix_wrap<T> (matrix<T> (1,1));
     }
 
     operator matrix<T>() {
-        return resolve_all();
+
+        matrix_wrap<T> m = resolve_all();
+        matrix<T> result(m.get_height(),m.get_width());
+
+        for (unsigned i = 0; i < m.get_height(); i++) {
+            for (unsigned j = 0; j < m.get_width(); j++) {
+                result(i,j) = m(i,j);
+            }
+        }
+
+        return result;
     }
 
-    unsigned get_height() const { return matrices.front().get_height(); }
+    //unsigned get_height() const { return operations.front()->get_height(); }
 
-    unsigned get_width() const { return matrices.back().get_width(); }
+    //unsigned get_width() const { return operations.back()->get_width(); }
 
     //TODO related to matrix_sum() constructor
     //template<typename V, typename U, class LType, class RType>
@@ -82,51 +88,32 @@ public:
     matrix_sum() = default;
 
 
-    template<typename W>
-    void add(matrix_operation<W> &mat) {
-        matrices.emplace_back(&mat);
-        sizes.push_back(mat.get_width());
+    void add(matrix_operation<T> *mat) {
+        operations.push_back(mat);
     }
 
 
 private:
 
     template<unsigned w2>
-    matrix_sum(matrix_sum<T, h, w2> &&X) : matrices(std::move(X.matrices)), sizes(std::move(X.sizes)) {}
+    matrix_sum(matrix_sum<T, h, w2> &&X) : operations(std::move(X.operations)) {}
 
 
-    void resolve() { while (matrices.size() > 2) resolve_one(); }
+    /*
+    void resolve() { while (operations.size() > 2) resolve_one(); }
 
     void resolve_one() {
         typename std::list<matrix_wrap<T>>::iterator lhs = find_max();
         typename std::list<matrix_wrap<T>>::iterator rhs = lhs;
         ++rhs;
-        typename std::list<matrix_wrap<T>>::iterator result = matrices.emplace(lhs, matrix<T>(lhs->get_height(),
+        typename std::list<matrix_wrap<T>>::iterator result = operations.emplace(lhs, matrix<T>(lhs->get_height(),
                                                                                               rhs->get_width()));
         do_multiply(*result, *lhs, *rhs);
-        matrices.erase(lhs);
-        matrices.erase(rhs);
-    }
+        operations.erase(lhs);
+        operations.erase(rhs);
+    }*/
 
-    typename std::list<matrix_wrap<T>>::iterator find_max() {
-        typename std::list<matrix_wrap<T>>::iterator mat_iter = matrices.begin();
-        typename std::list<matrix_wrap<T>>::iterator mat_max = mat_iter;
-        std::vector<unsigned>::iterator size_iter = sizes.begin();
-        std::vector<unsigned>::iterator last = --(sizes.end());
-        unsigned size_max = *size_iter;
-        while (size_iter != last) {
-            if (*size_iter > size_max) {
-                size_max = *size_iter;
-                mat_max = mat_iter;
-            }
-            ++mat_iter;
-            ++size_iter;
-        }
-        return mat_max;
-    }
-
-    std::list<std::unique_ptr<matrix_operation<T>>> matrices;
-    std::vector<unsigned> sizes;
+    std::list<matrix_operation<T> *> operations;
 
 };
 
@@ -173,12 +160,12 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     // 0,0 because we loose the static information
     matrix_sum<decltype(T() + U()), 0, 0> result;
-    matrix_singleton<T> lhs_wrapped  (lhs);
-    matrix_singleton<T> rhs_wrapped  (rhs);
-    result.add(lhs_wrapped);
-    result.add(rhs_wrapped);
+    //TODO matrix wrap without T
+    result.add(new matrix_singleton<decltype(T() + U())>(lhs));
+    result.add(new matrix_singleton<decltype(T() + U())>(lhs));
     return result;
 }
+
 /**
  * Static overload for sum operation between matrix_operation and matrix_ref
  * @tparam T
@@ -204,6 +191,7 @@ operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
     result.add(matrix_singleton(rhs));
     return result;
 }
+
 /**
  * Dynamic overload for sum operation between matrix_operation and matrix_ref
  * @tparam T
@@ -228,6 +216,7 @@ operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
     result.add(matrix_singleton(rhs));
     return result;
 }
+
 /**
  * Static overload for sum operation between matrix_ref and matrix_operation
  * @tparam T
@@ -246,6 +235,7 @@ std::enable_if_t
 operator+(const matrix_ref<U, RType> &lhs, matrix_operation_s<T, h, w> &rhs) {
     return rhs + lhs;
 }
+
 /**
  * Dynamic overload for sum operation between matrix_ref and matrix_operation
  * @tparam T
@@ -276,18 +266,19 @@ operator+(const matrix_ref<U, RType> &lhs, matrix_operation_s<T, h, w> &rhs) {
  * @param rhs
  * @return
  */
-template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned wr, class RType>
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
 std::enable_if_t
         <hl != 0 && hr != 0,
                 matrix_sum<decltype(T() + U()), hl, wl>>
 operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<U, hr, wr> &rhs) {
-    static_assert(hl == hr && wl ==wr, "dimension mismatch in Matrix addition");
+    static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), hl, wl> result;
     result.add(lhs);
     result.add(rhs);
     return result;
 
 }
+
 /**
  * Dynamic overload for sum operation between matrix_ref and matrix_operation
  * @tparam T
@@ -299,7 +290,7 @@ operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<U, 
  * @param rhs
  * @return
  */
-template<typename T, typename U, unsigned hl, unsigned wl,unsigned hr, unsigned wr, class RType>
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
 std::enable_if_t
         <hl == 0 || hr == 0,
                 matrix_sum<decltype(T() + U()), 0, 0>>
@@ -312,7 +303,6 @@ operator+(const matrix_operation_s<T, hl, wl> &lhs, const matrix_operation_s<U, 
     result.add(rhs);
     return result;
 }
-
 
 
 #endif //ASSIGNMENT_3_MATRIX_SUM_H
