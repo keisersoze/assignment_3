@@ -23,10 +23,18 @@ void initializeCells(matrix<T> &m) {
 }
 
 int main() {
+    int i =0 ;
+    std::cout << i;
+
+
     matrix<int> mA(10, 13);
     initializeCells(mA);
     matrix<int> mB(10, 13);
     initializeCells(mB);
 
-    matrix<int> result = mA + mB;
+    matrix<int> result = mA + mB  ;
+
+    matrix<int> XD = result + result;
+
+
 }

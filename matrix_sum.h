@@ -25,35 +25,20 @@ public:
     matrix_wrap<T> resolve_all() {
         std::vector<std::future<matrix_wrap<T>>> futures;
         for (auto aux : operations) {
-            futures.push_back(ThreadPool::getSingleton().enqueue([&]() {return aux->resolve_all();}));
+            futures.push_back(ThreadPool::getSingleton().enqueue([aux]() {return aux->resolve_all();}));
         }
-
-        /*
-        unsigned height = get_height();
-        unsigned width = get_width();
-
-        matrix<T> result(get_height(), get_width());
-
-
-        for (unsigned i; i < height; i++) {
-            for (unsigned j; j < width; j++) {
-                result(i,j) = 0;
-            }
-        }
-
-        for (auto future : futures) {
-            auto aux = future.get();
-            for (unsigned i; i < height; i++) {
-                for (unsigned j; j < width; j++) {
-                    result(i,j) += aux (i,j);
+        matrix_wrap<T> result =  futures[0].get();
+        const int height = result.get_height();
+        const int width = result.get_width();
+        for (int i = 1; i < futures.size() ; ++i) {
+            matrix_wrap<T> m = futures[i].get();
+            for (int j = 0; j < height; ++j) {
+                for (int k = 0; k < width ; ++k) {
+                    result(j,k) += m(j,k);
                 }
             }
         }
-         */
-
-        // std::cerr << "addition conversion\n";
-
-        return matrix_wrap<T> (matrix<T> (1,1));
+        return matrix_wrap<T> (result);
     }
 
     operator matrix<T>() {
@@ -69,10 +54,6 @@ public:
 
         return result;
     }
-
-    //unsigned get_height() const { return operations.front()->get_height(); }
-
-    //unsigned get_width() const { return operations.back()->get_width(); }
 
     //TODO related to matrix_sum() constructor
     //template<typename V, typename U, class LType, class RType>
@@ -97,21 +78,6 @@ private:
 
     template<unsigned w2>
     matrix_sum(matrix_sum<T, h, w2> &&X) : operations(std::move(X.operations)) {}
-
-
-    /*
-    void resolve() { while (operations.size() > 2) resolve_one(); }
-
-    void resolve_one() {
-        typename std::list<matrix_wrap<T>>::iterator lhs = find_max();
-        typename std::list<matrix_wrap<T>>::iterator rhs = lhs;
-        ++rhs;
-        typename std::list<matrix_wrap<T>>::iterator result = operations.emplace(lhs, matrix<T>(lhs->get_height(),
-                                                                                              rhs->get_width()));
-        do_multiply(*result, *lhs, *rhs);
-        operations.erase(lhs);
-        operations.erase(rhs);
-    }*/
 
     std::list<matrix_operation<T> *> operations;
 
