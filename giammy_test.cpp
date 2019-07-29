@@ -32,9 +32,8 @@ int main() {
     matrix<int> mB(10, 13);
     initializeCells(mB);
 
-    matrix<int> result = mA + mB  ;
+    matrix<int> result = mA + mB + mB ;
 
     matrix<int> XD = result + result;
-
 
 }

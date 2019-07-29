@@ -15,7 +15,7 @@
 
 
 template<typename T, unsigned h, unsigned w>
-class matrix_sum : matrix_operation_s<T, h, w> {
+class matrix_sum : public matrix_operation_s<T, h, w> {
 public:
 
     template<typename T2, unsigned h2, unsigned w2>
@@ -62,8 +62,6 @@ public:
     //template, typename V, typename U, unsigned h2, unsigned w2, class RType>
     //friend  operator+(matrix_operation_s<V, h2, w2> &&lhs, const matrix_ref<U, RType> &rhs);
 
-    matrix_sum(matrix_sum<T, h, w> &&X) = default;
-
 
     //TODO make the constructor private and add function
     matrix_sum() = default;
@@ -74,10 +72,9 @@ public:
     }
 
 
-private:
+    matrix_sum(matrix_sum<T, h, w> &&X) : operations(std::move(X.operations)) {}
 
-    template<unsigned w2>
-    matrix_sum(matrix_sum<T, h, w2> &&X) : operations(std::move(X.operations)) {}
+private:
 
     std::list<matrix_operation<T> *> operations;
 
@@ -147,7 +144,7 @@ template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t
         <h != 0 && matrix_ref<U, RType>::H != 0,
                 matrix_sum<decltype(T() + U()), h, w>>
-operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
+operator+(const matrix_sum<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 ||
                   (matrix_ref<T, RType>::H == h &&
                    matrix_ref<T, RType>::W == w),
@@ -173,13 +170,12 @@ template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t
         <h == 0 || matrix_ref<U, RType>::H == 0,
                 matrix_sum<decltype(T() + U()), 0, 0>>
-operator+(matrix_operation_s<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
-    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
-        throw std::domain_error("dimension mismatch in Matrix addition");
-    }
-    matrix_sum<decltype(T() + U()), 0, 0> result;
-    result.add(lhs);
-    result.add(matrix_singleton(rhs));
+operator+(matrix_sum<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+    //if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+    //    throw std::domain_error("dimension mismatch in Matrix addition");
+    //}
+    matrix_sum<T, h, w> result(std::move(lhs));
+    result.add(new matrix_singleton(rhs));
     return result;
 }
 

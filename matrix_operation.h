@@ -18,7 +18,7 @@ public:
 };
 
 template<typename T, unsigned h, unsigned w>
-class matrix_operation_s : matrix_operation<T> {
+class matrix_operation_s : public matrix_operation<T> {
     static constexpr unsigned H = h;
     static constexpr unsigned W = w;
 
