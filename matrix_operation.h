@@ -12,23 +12,10 @@ class matrix_operation {
 public:
     virtual matrix<T> resolve_all() = 0;
 
-    //virtual unsigned get_height() = 0;
+    virtual unsigned get_height() = 0;
 
-    //virtual unsigned get_width() = 0;
+    virtual unsigned get_width() = 0;
 };
-/*
-template<typename T, unsigned h, unsigned w>
-class matrix_operation_s : public matrix_operation<T> {
-    static constexpr unsigned H = h;
-    static constexpr unsigned W = w;
-
-
-    //virtual unsigned get_height() = 0;
-
-    //virtual unsigned get_width() = 0;
-};
- */
-
 
 template<typename T>
 class matrix_singleton : public matrix_operation<T> {
@@ -40,11 +27,11 @@ public:
         return this->singleton;
     }
 
-    virtual unsigned get_height() {
+    unsigned get_height() {
         return this->singleton.get_height();
     }
 
-    virtual unsigned get_width() {
+    unsigned get_width() {
         return this->singleton.get_width();
     }
 

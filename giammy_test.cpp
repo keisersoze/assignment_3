@@ -6,11 +6,8 @@
 #include <vector>
 #include <ctime>
 #include <memory>
-#include <thread>
 
 #include"matrix.h"
-#include"matrix_wrap.h"
-#include"matrix_operation.h"
 #include"matrix_sum.h"
 
 template<typename T>
@@ -48,7 +45,6 @@ void initializeCellsRand(matrix<T, h, w> &m) {
 
 int main() {
     int i =0 ;
-    std::cout << 5 << std::endl;
     matrix<int, 10, 13> mA;
     initializeCells(mA);
     matrix<int, 10, 13> mB;
@@ -56,7 +52,22 @@ int main() {
     matrix<int, 10, 13> mC;
     initializeCellsRand(mC);
 
-    matrix<int, 10, 13> result = mC + mB;
+    matrix<int, 10, 13> res1 = mC + mB;
+    matrix<int, 10, 13> res2 = mC + mB + mA;
+    matrix<int, 10, 13> res3 = (mC + mB) + mA;
+    matrix<int, 10, 13> res4 = mC + (mB + mA);
+
+    matrix<int> m1(10,13);
+    initializeCells(m1);
+    matrix<int> m2(10,13);
+    initializeCells(m2);
+    matrix<int> m3(10,13);
+    initializeCells(m3);
+    matrix<int> res11 = m1 + m2;
+    matrix<int> res22 = m1 + m2 + m1;
+    matrix<int> res33 = (m1 + m2) + m1;
+    matrix<int> res44 = m1 + (m2 + m1);
+
     //matrix<int> XD = result + result;
 
 }
