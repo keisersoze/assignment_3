@@ -15,7 +15,6 @@
 #include <functional>
 #include <stdexcept>
 
-#define N_THREAD 8
 
 class ThreadPool {
 public:
@@ -94,7 +93,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args)
 }
 
 inline ThreadPool &ThreadPool::getSingleton() {
-    static ThreadPool singleton(N_THREAD);
+    static ThreadPool singleton(std::thread::hardware_concurrency());
 
     return singleton;
 }
