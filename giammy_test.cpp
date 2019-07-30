@@ -21,19 +21,42 @@ void initializeCells(matrix<T> &m) {
         }
     }
 }
+template<typename T, unsigned h, unsigned w>
+void initializeCells(matrix<T, h, w> &m) {
+    for (unsigned row = 0; row < m.get_height(); ++row) {
+        for (unsigned col = 0; col < m.get_width(); ++col) {
+            m(row, col) = 1;
+        }
+    }
+}
+template<typename T>
+void initializeCellsRand(matrix<T> &m) {
+    for (unsigned row = 0; row < m.get_height(); ++row) {
+        for (unsigned col = 0; col < m.get_width(); ++col) {
+            m(row, col) = (int) std::rand()*100;
+        }
+    }
+}
+template<typename T, unsigned h, unsigned w>
+void initializeCellsRand(matrix<T, h, w> &m) {
+    for (unsigned row = 0; row < m.get_height(); ++row) {
+        for (unsigned col = 0; col < m.get_width(); ++col) {
+            m(row, col) = (int) std::rand()*100;
+        }
+    }
+}
 
 int main() {
     int i =0 ;
-    std::cout << i;
-
-
-    matrix<int> mA(10, 13);
+    std::cout << 5 << std::endl;
+    matrix<int, 10, 13> mA;
     initializeCells(mA);
-    matrix<int> mB(10, 13);
+    matrix<int, 10, 13> mB;
     initializeCells(mB);
+    matrix<int, 10, 13> mC;
+    initializeCellsRand(mC);
 
-    matrix<int> result = mA + mB + mB ;
-
-    matrix<int> XD = result + result;
+    matrix<int, 10, 13> result = mC + mB;
+    //matrix<int> XD = result + result;
 
 }
