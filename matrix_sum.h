@@ -9,7 +9,7 @@
 #include <list>
 #include <thread>
 #include "parallel_multiplication.h"
-#include "matrix_operation.h"
+#include "matrix_expression.h"
 
 #include "thread_pool.h"
 #include <unistd.h>
@@ -28,7 +28,7 @@ matrix<T> sum(const matrix<T> &m1, const matrix<T> &m2) {
 }
 
 template<typename T, unsigned h, unsigned w>
-class matrix_sum : public matrix_operation<T> {
+class matrix_sum : public matrix_expression<T> {
 public:
 
     template<typename T2, unsigned h2, unsigned w2>
@@ -62,6 +62,7 @@ public:
     template<unsigned h2, unsigned w2>
     operator matrix<T, h2, w2>() {
         static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
+        // TODO anderstand uai dis faching fanscion is wurking
         return (matrix<T, h2, w2>) resolve_all();
     }
 
@@ -118,12 +119,12 @@ public:
 
 
 private:
-    //TODO maybe it is better to use a std::list<std::unique_ptr<matrix_operation<T>>>
-    std::list<std::unique_ptr<matrix_operation<T>>> operations;
+    //TODO maybe it is better to use a std::list<std::unique_ptr<matrix_expression<T>>>
+    std::list<std::unique_ptr<matrix_expression<T>>> operations;
 
     matrix_sum() = default;
 
-    void add(std::unique_ptr<matrix_operation<T>> &&mat) {
+    void add(std::unique_ptr<matrix_expression<T>> &&mat) {
         operations.push_back(std::move(mat));
     }
 

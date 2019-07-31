@@ -2,13 +2,13 @@
 // Created by Gianmarco Callegher on 2019-07-18.
 //
 
-#ifndef ASSIGNMENT_3_MATRIX_OPERATION_H
-#define ASSIGNMENT_3_MATRIX_OPERATION_H
+#ifndef ASSIGNMENT_3_MATRIX_EXPRESSION_H
+#define ASSIGNMENT_3_MATRIX_EXPRESSION_H
 
 #include "matrix_wrap.h"
 
 template<typename T>
-class matrix_operation {
+class matrix_expression {
 public:
     virtual matrix<T> resolve_all() const = 0;
 
@@ -16,12 +16,12 @@ public:
 
     virtual unsigned get_width() const = 0;
 
-    virtual ~matrix_operation() {};
+    virtual ~matrix_expression() {};
 
 };
 
 template<typename T>
-class matrix_singleton : public matrix_operation<T> {
+class matrix_singleton : public matrix_expression<T> {
 public:
     template<class matrix_type>
     matrix_singleton(matrix_ref<T, matrix_type> m): singleton(m){};
@@ -45,4 +45,4 @@ private:
 };
 
 
-#endif //ASSIGNMENT_3_MATRIX_OPERATION_H
+#endif //ASSIGNMENT_3_MATRIX_EXPRESSION_H
