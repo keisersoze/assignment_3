@@ -15,13 +15,16 @@ public:
     virtual unsigned get_height() const = 0 ;
 
     virtual unsigned get_width() const = 0;
+
+    virtual ~matrix_operation() {};
+
 };
 
 template<typename T>
 class matrix_singleton : public matrix_operation<T> {
 public:
     template<class matrix_type>
-    matrix_singleton(const matrix_ref<T, matrix_type> &m): singleton(m){};
+    matrix_singleton(matrix_ref<T, matrix_type> m): singleton(m){};
 
     matrix<T> resolve_all() const {
         return this->singleton;
@@ -34,6 +37,8 @@ public:
     unsigned get_width() const {
         return this->singleton.get_width();
     }
+
+    ~matrix_singleton() = default;
 
 private:
     matrix<T> singleton;

@@ -37,8 +37,8 @@ public:
 
     matrix<T> resolve_all() const {
         std::vector<std::future<matrix<T>>> futures;
-        for (auto aux : operations) {
-            futures.push_back(ThreadPool::getSingleton().enqueue([aux]() { return aux->resolve_all(); }));
+        for (auto &&aux : operations) {
+            futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
         while (futures.size() > 1) {
             std::vector<std::future<matrix<T>>> futures_aux;
@@ -88,41 +88,43 @@ public:
 
     template<typename V, typename U, unsigned hf, unsigned wf, class RType>
     std::enable_if_t<hf != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(V() + U()), hf, wf>>
-    friend operator+(const matrix_sum<V, hf, wf> &lhs, const matrix_ref<U, RType> &rhs);
+    friend operator+( matrix_sum<V, hf, wf> &&lhs, const matrix_ref<U, RType> &rhs);
 
     template<typename V, typename U, unsigned hf, unsigned wf, class RType>
     std::enable_if_t<hf == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(V() + U()), 0, 0>>
-    friend operator+(const matrix_sum<V, hf, wf> &lhs, const matrix_ref<U, RType> &rhs);
+    friend operator+( matrix_sum<V, hf, wf> &&lhs, const matrix_ref<U, RType> &rhs);
 
     template<typename V, typename U, unsigned hf, unsigned wf, class RType>
     std::enable_if_t<hf != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(V() + U()), hf, wf>>
-    friend operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<V, hf, wf> &rhs);
+    friend operator+(const matrix_ref<U, RType> &lhs, matrix_sum<V, hf, wf> &&rhs);
 
     template<typename V, typename U, unsigned hf, unsigned wf, class RType>
     std::enable_if_t<hf == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(V() + U()), 0, 0>>
-    friend operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<V, hf, wf> &rhs);
+    friend operator+(const matrix_ref<U, RType> &lhs, matrix_sum<V, hf, wf> &&rhs);
 
     template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
     std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(V() + U()), hl, wl>>
-    friend operator+(const matrix_sum<V, hl, wl> &lhs, const matrix_sum<U, hr, wr> &rhs);
+    friend operator+( matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
 
     template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
     std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
-    friend operator+(const matrix_sum<V, hl, wl> &lhs, const matrix_sum<U, hr, wr> &rhs);
+    friend operator+( matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
 
     matrix_sum(matrix_sum<T, h, w> &&X) : operations(std::move(X.operations)) {}
 
-    matrix_sum(const matrix_sum<T, h, w> &X) : operations(X.operations) {}
+    matrix_sum(const matrix_sum<T, h, w> &X) = delete;
+
+    ~matrix_sum() = default;
 
 
 private:
     //TODO maybe it is better to use a std::list<std::unique_ptr<matrix_operation<T>>>
-    std::list<matrix_operation<T> *> operations;
+    std::list<std::unique_ptr<matrix_operation<T>>> operations;
 
     matrix_sum() = default;
 
-    void add(matrix_operation<T> *mat) {
-        operations.push_back(mat);
+    void add(std::unique_ptr<matrix_operation<T>> &&mat) {
+        operations.push_back(std::move(mat));
     }
 
 };
@@ -145,8 +147,8 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
                   (matrix_ref<T, LType>::H == matrix_ref<T, RType>::H),
                   "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
-    result.add(new matrix_singleton<decltype(T() + U())>(lhs));
-    result.add(new matrix_singleton<decltype(T() + U())>(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(lhs)));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
     return result;
 }
 
@@ -167,8 +169,8 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     // 0,0 because we loose the static information
     matrix_sum<decltype(T() + U()), 0, 0> result;
-    result.add(new matrix_singleton<decltype(T() + U())>(lhs));
-    result.add(new matrix_singleton<decltype(T() + U())>(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(lhs)));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
     return result;
 }
 
@@ -185,11 +187,11 @@ operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
  */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(T() + U()), h, w>>
-operator+(const matrix_sum<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
+operator+(matrix_sum<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == h && matrix_ref<T, RType>::W == w),
                   "dimension mismatch in Matrix multiplication");
     matrix_sum<decltype(T() + U()), h, w> result(std::move(lhs));
-    result.add(new matrix_singleton(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
     return result;
 }
 
@@ -206,12 +208,12 @@ operator+(const matrix_sum<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
  */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(T() + U()), 0, 0>>
-operator+(const matrix_sum<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
+operator+(matrix_sum<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
     if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_sum<decltype(T() + U()), h, w> result(std::move(lhs));
-    result.add(new matrix_singleton(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
     return result;
 }
 
@@ -228,11 +230,11 @@ operator+(const matrix_sum<T, h, w> &lhs, const matrix_ref<U, RType> &rhs) {
 */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(T() + U()), h, w>>
-operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<T, h, w> &rhs) {
+operator+(const matrix_ref<U, RType> &lhs, matrix_sum<T, h, w> &&rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == h && matrix_ref<T, RType>::W == w),
                   "dimension mismatch in Matrix multiplication");
     matrix_sum<decltype(T() + U()), h, w> result(std::move(rhs));
-    result.add(new matrix_singleton(lhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(lhs)));
     return result;
 }
 
@@ -249,12 +251,12 @@ operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<T, h, w> &rhs) {
 */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(T() + U()), 0, 0>>
-operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<T, h, w> &rhs) {
+operator+(const matrix_ref<U, RType> &lhs, matrix_sum<T, h, w> &&rhs) {
     if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_sum<decltype(T() + U()), h, w> result(std::move(rhs));
-    result.add(new matrix_singleton(lhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(lhs)));
     return result;
 }
 
@@ -272,14 +274,15 @@ operator+(const matrix_ref<U, RType> &lhs, const matrix_sum<T, h, w> &rhs) {
 */
 template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
 std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(T() + U()), hl, wl>>
-operator+(const matrix_sum<T, hl, wl> &lhs, const matrix_sum<U, hr, wr> &rhs) {
+operator+(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
-    result.add(lhs);
-    result.add(rhs);
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hl, wl>>(std::move(lhs))));
     return result;
 
 }
+
 
 /**
  * Static overload for sum operation between two matrix_sums
@@ -295,13 +298,13 @@ operator+(const matrix_sum<T, hl, wl> &lhs, const matrix_sum<U, hr, wr> &rhs) {
 */
 template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
 std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(T() + U()), 0, 0>>
-operator+(const matrix_sum<T, hl, wl> &lhs, const matrix_sum<U, hr, wr> &rhs) {
+operator+( matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
-    result.add(lhs);
-    result.add(rhs);
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 
