@@ -13,8 +13,11 @@
 #include "thread_pool.h"
 
 template<typename T, unsigned h, unsigned w>
-class matrix_product : public matrix_expression<T> {
+class matrix_product {
 public:
+
+    static constexpr unsigned H = h;
+    static constexpr unsigned W = w;
 
     template<typename T2, unsigned h2, unsigned w2>
     friend
@@ -22,13 +25,42 @@ public:
 
 
     operator matrix<T>() {
+        resolve();
+        matrix_wrap<T> lhs = matrices.front(), rhs = matrices.back();
+        const unsigned height = lhs.get_height();
+        const unsigned width = rhs.get_width();
+        const unsigned span = lhs.get_width();
+        assert(span == rhs.get_height());
+        matrix<T> result(height, width);
+        for (unsigned i = 0; i != height; ++i)
+            for (unsigned j = 0; j != width; ++j) {
+                result(i, j) = 0;
+                for (unsigned k = 0; k != span; ++k)
+                    result(i, j) += lhs(i, k) * rhs(k, j);
+            }
 
+        std::cerr << "product conversion\n";
+        return result;
     }
 
     template<unsigned h2, unsigned w2>
     operator matrix<T, h2, w2>() {
+        static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
+        assert(h2 == get_height() && w2 == get_width());
+        resolve();
+        matrix_wrap<T> lhs = matrices.front(), rhs = matrices.back();
+        const unsigned span = lhs.get_width();
+        assert(span == rhs.get_height());
+        matrix<T, h2, w2> result;
+        for (unsigned i = 0; i != h2; ++i)
+            for (unsigned j = 0; j != w2; ++j) {
+                result(i, j) = 0;
+                for (unsigned k = 0; k != span; ++k)
+                    result(i, j) += lhs(i, k) * rhs(k, j);
+            }
 
-
+        std::cerr << "sized product conversion\n";
+        return result;
     }
 
     unsigned get_height() const { return matrices.front().get_height(); }
@@ -74,7 +106,7 @@ private:
         matrices.erase(rhs);
     }
 
-    typename std::list<matrix_wrap<T>>::iterator find_max() {
+    typename std::list<matrix_wrap<T>>::iterator find_max_and_update() {
         typename std::list<matrix_wrap<T>>::iterator mat_iter = matrices.begin();
         typename std::list<matrix_wrap<T>>::iterator mat_max = mat_iter;
         std::vector<unsigned>::iterator size_iter = sizes.begin();
@@ -92,8 +124,8 @@ private:
     }
 
     /************************************************************
-     ****	Previous implementation of parallel multiplication	*
-     **** 	Ovverided in in parallel_multiplication.h			*
+     ****	Previous implementation	*
+     **** 	Ovverided in  parallel_multiplication.h			*
      ************************************************************
 	void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
 		const unsigned height = result.get_height();

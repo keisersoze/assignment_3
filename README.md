@@ -10,7 +10,7 @@ Extend the matrix library (either the one presented or, if you feel confident an
 
 1. Compile-time matrix dimensions: provide a variant of the matrix that maintains compile-time information about height and width. Allow accessors to be bounds-checked at compile time and maintain compile-time size information as much as possible through matrix operators.
 
-2. Matrix operations: provide matrix addition and (row-by-column) multiplication. Operations should interact with compile-time dimensions correctly (dimensions checked at compile-time).
+2. Matrix operands: provide matrix addition and (row-by-column) multiplication. Operations should interact with compile-time dimensions correctly (dimensions checked at compile-time).
 
 When dealing with multiple multiplications, the library must perform the sequence of multiplications in the most computationally efficient order, i.e., by multiplying matrices contracting the largest dimension first. For example, let A, B, and C be 2x3, 3x5, and 5x2 matrices respectively, then the expression A*B*C should be computed as if it where A*(B*C), performing first the multiplication B*C since it is contracting the dimension 5, and then multiplying A by the result, contracting the smaller dimension 3.
 

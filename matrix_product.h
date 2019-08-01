@@ -9,168 +9,303 @@
 #include<list>
 #include <thread>
 #include "parallel_multiplication.h"
-
+#include "matrix_expression.h"
 #include "thread_pool.h"
 
 template<typename T, unsigned h, unsigned w>
-class matrix_product {
+class matrix_product : public matrix_expression<T> {
 public:
-
-    static constexpr unsigned H = h;
-    static constexpr unsigned W = w;
 
     template<typename T2, unsigned h2, unsigned w2>
     friend
     class matrix_product;
 
+    void update_sizes() const;
+
+    matrix<T> resolve_all() {
+        std::vector<std::future<matrix<T>>> futures;
+        for (auto &&aux : operands) {
+            futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
+        }
+        while (futures.size() > 2) {
+            auto lhs = find_max_and_update(futures);
+            auto rhs = lhs;
+            ++rhs;
+            auto result = futures.insert(lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>, (*lhs).get(), (*rhs).get()));
+            futures.erase(lhs);
+            futures.erase(rhs);
+        }
+        return do_multiply(futures[0].get(), futures[1].get());
+    }
 
     operator matrix<T>() {
-        resolve();
-        matrix_wrap<T> lhs = matrices.front(), rhs = matrices.back();
-        const unsigned height = lhs.get_height();
-        const unsigned width = rhs.get_width();
-        const unsigned span = lhs.get_width();
-        assert(span == rhs.get_height());
-        matrix<T> result(height, width);
-        for (unsigned i = 0; i != height; ++i)
-            for (unsigned j = 0; j != width; ++j) {
-                result(i, j) = 0;
-                for (unsigned k = 0; k != span; ++k)
-                    result(i, j) += lhs(i, k) * rhs(k, j);
-            }
-
-        std::cerr << "product conversion\n";
-        return result;
+        return resolve_all();
     }
 
     template<unsigned h2, unsigned w2>
     operator matrix<T, h2, w2>() {
         static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
-        assert(h2 == get_height() && w2 == get_width());
-        resolve();
-        matrix_wrap<T> lhs = matrices.front(), rhs = matrices.back();
-        const unsigned span = lhs.get_width();
-        assert(span == rhs.get_height());
-        matrix<T, h2, w2> result;
-        for (unsigned i = 0; i != h2; ++i)
-            for (unsigned j = 0; j != w2; ++j) {
-                result(i, j) = 0;
-                for (unsigned k = 0; k != span; ++k)
-                    result(i, j) += lhs(i, k) * rhs(k, j);
-            }
-
-        std::cerr << "sized product conversion\n";
-        return result;
+        return (matrix<T, h2, w2>) resolve_all();
     }
 
-    unsigned get_height() const { return matrices.front().get_height(); }
+    unsigned get_height() const { return operands.front()->get_height(); }
 
-    unsigned get_width() const { return matrices.back().get_width(); }
-
-
-    template<typename U, class LType, class RType>
-    friend matrix_product<U, matrix_ref<U, LType>::H, matrix_ref<U, RType>::W>
-    operator*(const matrix_ref<U, LType> &lhs, const matrix_ref<U, RType> &rhs);
-
-    template<typename U, unsigned h2, unsigned w2, class RType>
-    friend matrix_product<U, h2, matrix_ref<U, RType>::W>
-    operator*(matrix_product<U, h2, w2> &&lhs, const matrix_ref<U, RType> &rhs);
-
+    unsigned get_width() const { return operands.back()->get_width(); }
 
     matrix_product(matrix_product<T, h, w> &&X) = default;
 
 private:
+    std::list<std::unique_ptr<matrix_expression<T>>> operands;
+    std::vector<unsigned> sizes;
 
     matrix_product() = default;
 
     template<unsigned w2>
-    matrix_product(matrix_product<T, h, w2> &&X) :matrices(std::move(X.matrices)),sizes(std::move(X.sizes)) {}
+    matrix_product(matrix_product<T, h, w2> &&X) :operands(std::move(X.operands)), sizes(std::move(X.sizes)) {}
 
-    template<class matrix_type>
-    void add(matrix_ref<T, matrix_type> mat) {
-        matrices.emplace_back(mat);
-        sizes.push_back(mat.get_width());
+    void add(std::unique_ptr<matrix_expression<T>> &&mat) {
+        sizes.push_back(mat->get_width());
+        operands.push_back(std::move(mat));
     }
 
 
-    void resolve() { while (matrices.size() > 2) resolve_one(); }
-
-    void resolve_one() {
-        typename std::list<matrix_wrap<T>>::iterator lhs = find_max();
-        typename std::list<matrix_wrap<T>>::iterator rhs = lhs;
-        ++rhs;
-        typename std::list<matrix_wrap<T>>::iterator result = matrices.emplace(lhs, matrix<T>(lhs->get_height(),
-                                                                                              rhs->get_width()));
-        do_multiply(*result, *lhs, *rhs);
-        matrices.erase(lhs);
-        matrices.erase(rhs);
-    }
-
-    typename std::list<matrix_wrap<T>>::iterator find_max() {
-        typename std::list<matrix_wrap<T>>::iterator mat_iter = matrices.begin();
-        typename std::list<matrix_wrap<T>>::iterator mat_max = mat_iter;
-        std::vector<unsigned>::iterator size_iter = sizes.begin();
-        std::vector<unsigned>::iterator last = --(sizes.end());
+    typename std::vector<std::future<matrix<T>>>::iterator find_max_and_update(
+            std::vector<std::future<matrix<T>>> &futures) {
+        auto mat_iter = futures.begin();
+        auto mat_max = mat_iter;
+        auto size_iter = sizes.begin();
+        auto size_iter_max = sizes.begin();
+        auto last = --(sizes.end());
         unsigned size_max = *size_iter;
         while (size_iter != last) {
             if (*size_iter > size_max) {
                 size_max = *size_iter;
+                size_iter_max = size_iter;
                 mat_max = mat_iter;
             }
             ++mat_iter;
             ++size_iter;
         }
+        sizes.erase(size_iter_max);
         return mat_max;
     }
 
-    /************************************************************
-     ****	Previous implementation of parallel multiplication	*
-     **** 	Ovverided in in parallel_multiplication.h			*
-     ************************************************************
-	void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
-		const unsigned height = result.get_height();
-		const unsigned width = result.get_width();
-		const unsigned span = lhs.get_width();
-		assert(span==rhs.get_height());
-		for (unsigned i=0; i!=height; ++i)
-			for (unsigned j=0; j!=width; ++j) {
-				result(i,j)=0;
-				for (unsigned k=0; k!=span; ++k)
-					result(i,j) += lhs(i,k)*rhs(k,j);
-				}
-	}
-    **/
+    template<typename V, typename U, class LType, class RType>
+    std::enable_if_t<matrix_ref<V, LType>::H != 0 && matrix_ref<U, RType>::H != 0,
+            matrix_product<decltype(V() * U()), matrix_ref<V, LType>::H, matrix_ref<U, RType>::W>>
+    friend operator*(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
 
-    std::list<matrix_wrap<T>> matrices;
-    std::vector<unsigned> sizes;
+    template<typename V, typename U, class LType, class RType>
+    std::enable_if_t<
+            matrix_ref<V, LType>::H == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0,
+            matrix_product<decltype(V() + U()), hl, matrix_ref<V, RType>::W>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
 
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(V() * U()), hl, matrix_ref<U, RType>::W>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
 };
 
+/**
+ * Static overload of product operation between matrix_ref and matrix_ref
+ * @tparam T elements type of the first matrix_ref
+ * @tparam U elements type of the second matrix_ref
+ * @tparam LType inner type of the first matrix_ref
+ * @tparam RType inner type of the second matrix_ref
+ * @param lhs first matrix_ref
+ * @param rhs second matrix_ref
+ * @return a \matrix_sum that contains the two matrix_refs
+ */
+template<typename T, typename U, class LType, class RType>
+std::enable_if_t<matrix_ref<T, LType>::H != 0 && matrix_ref<U, RType>::H != 0,
+        matrix_product<decltype(T() * U()), matrix_ref<T, LType>::H, matrix_ref<U, RType>::W>>
+operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
+    static_assert((matrix_ref<T, LType>::W == matrix_ref<U, RType>::H),
+                  "dimension mismatch in Matrix addition");
+    matrix_product<decltype(T() * U()), matrix_ref<T, LType>::H, matrix_ref<U, RType>::W> result;
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    return result;
+}
 
-template<typename T, class LType, class RType>
-matrix_product<T, matrix_ref<T, LType>::H, matrix_ref<T, RType>::W>
-operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<T, RType> &rhs) {
-    static_assert(matrix_ref<T, LType>::W * matrix_ref<T, LType>::H == 0 ||
-                  matrix_ref<T, LType>::W == matrix_ref<T, RType>::H,
-                  "dimension mismatch in Matrix multiplication");
+/**
+ * Dynamic overload of product operation between matrix_ref and matrix_ref
+ * @tparam T elements type of the first matrix_ref
+ * @tparam U elements type of the second matrix_ref
+ * @tparam LType inner type of the first matrix_ref
+ * @tparam RType inner type of the second matrix_ref
+ * @param lhs first matrix_ref
+ * @param rhs second matrix_ref
+ * @return a \matrix_sum that contains the two matrix_refs
+ */
+template<typename T, typename U, class LType, class RType>
+std::enable_if_t<
+        matrix_ref<T, LType>::H == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(T() * U()), 0, 0>>
+operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
     if (lhs.get_width() != rhs.get_height())
-        throw std::domain_error("dimension mismatch in Matrix multiplication");
-    matrix_product<T, matrix_ref<T, LType>::H, matrix_ref<T, RType>::W> result;
-    result.add(lhs);
-    result.add(rhs);
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    // 0,0 because we loose the static information
+    matrix_product<decltype(T() * U()), 0, 0> result;
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    return result;
+}
+
+/**
+ * Static overload for product operation between matrix_sum and matrix_ref
+ * @tparam T elements type of matrix_sum
+ * @tparam U elements type of matrix_ref
+ * @tparam h height of matrix_sum
+ * @tparam w width of matrix_sum
+ * @tparam RType inner type of matrix_ref
+ * @param lhs matrix_sum
+ * @param rhs matrix_ref
+ * @return the same matrix_sum with a the matrix_ref appended
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0,
+matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W>>
+operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+    static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == w),
+                  "dimension mismatch in Matrix multiplication");
+    matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W> result(std::move(lhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs))
+    );
+    return result;
+}
+
+/**
+ * Dynamic overload for product operation between matrix_sum and matrix_ref
+ * @tparam T elements type of matrix_sum
+ * @tparam U elements type of matrix_ref
+ * @tparam h height of matrix_sum
+ * @tparam w width of matrix_sum
+ * @tparam RType inner type of matrix_ref
+ * @param lhs matrix_sum
+ * @param rhs matrix_ref
+ * @return the same matrix_sum with a the matrix_ref appended
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(T() * U()), 0, 0>>
+operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_product<decltype(T() + U()), h, w> result(std::move(lhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    return result;
+}
+
+/**
+ * Static overload for sum operation between matrix_ref and matrix_sum
+ * @tparam T elements type of matrix_sum
+ * @tparam U elements type of matrix_ref
+ * @tparam h height of matrix_sum
+ * @tparam w width of matrix_sum
+ * @tparam RType inner type of matrix_ref
+ * @param lhs matrix_ref
+ * @param rhs matrix_sum
+ * @return the same matrix_sum with a the matrix_ref appended
+*/
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(T() * U()), h, matrix_ref<U, RType>::W>>
+operator*(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
+    static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::W == h),
+                  "dimension mismatch in Matrix multiplication");
+    matrix_product<decltype(T() * U()), h, matrix_ref<T, RType>::W> result(std::move(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    return result;
+}
+
+/**
+ * Dynamic overload for sum operation between matrix_ref and matrix_sum
+ * @tparam T elements type of matrix_sum
+ * @tparam U elements type of matrix_ref
+ * @tparam h height of matrix_sum
+ * @tparam w width of matrix_sum
+ * @tparam RType inner type of matrix_ref
+ * @param lhs matrix_ref
+ * @param rhs matrix_sum
+ * @return the same matrix_sum with a the matrix_ref appended
+*/
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(T() * U()), 0, 0>>
+operator*(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_product<decltype(T() * U()), h, w> result(std::move(rhs));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    return result;
+}
+
+/**
+ * Static overload for sum operation between two matrix_sums
+ * @tparam T elements type of the first matrix_sum
+ * @tparam U elements type of the second matrix_sum
+ * @tparam hl height of the first matrix_sum
+ * @tparam wl width of the first matrix_sum
+ * @tparam hr height of the second matrix_sum
+ * @tparam wr width of the second matrix_sum
+ * @param lhs the first matrix sum
+ * @param rhs the second matrix sum
+ * @return the first matrix_sum having as last element the second matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>>
+operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    static_assert(wl == hr, "dimension mismatch in Matrix addition");
+    matrix_product<decltype(T() * U()), hl, wr> result(std::move(lhs));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 
 
-template<typename T, unsigned h, unsigned w, class RType>
-matrix_product<T, h, matrix_ref<T, RType>::W>
-operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<T, RType> &rhs) {
-    static_assert(w * matrix_ref<T, RType>::H == 0 || w == matrix_ref<T, RType>::H,
-                  "dimension mismatch in Matrix multiplication");
-    if (lhs.get_width() != rhs.get_height())
-        throw std::domain_error("dimension mismatch in Matrix multiplication");
-    matrix_product<T, h, matrix_ref<T, RType>::W> result(std::move(lhs));
-    result.add(rhs);
+/**
+ * Dynamic overload for sum operation between two matrix_products
+ * @tparam T elements type of the first matrix_sum
+ * @tparam U elements type of the second matrix_sum
+ * @tparam hl height of the first matrix_sum
+ * @tparam wl width of the first matrix_sum
+ * @tparam hr height of the second matrix_sum
+ * @tparam wr width of the second matrix_sum
+ * @param lhs the first matrix sum
+ * @param rhs the second matrix sum
+ * @return the first matrix_sum having as last element the second matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
+std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(T() * U()), 0, 0>>
+operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    if (lhs.get_width() != rhs.get_height()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_product<decltype(T() + U()), hl, wl> result(std::move(lhs));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>> (std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>> (std::move(lhs))));
     return result;
 }
 

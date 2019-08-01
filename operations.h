@@ -178,7 +178,7 @@ private:
         matrices.erase(rhs);
     }
 
-    typename std::list<matrix_wrap<T>>::iterator find_max() {
+    typename std::list<matrix_wrap<T>>::iterator find_max_and_update() {
         typename std::list<matrix_wrap<T>>::iterator mat_iter = matrices.begin();
         typename std::list<matrix_wrap<T>>::iterator mat_max = mat_iter;
         std::vector<unsigned>::iterator size_iter = sizes.begin();

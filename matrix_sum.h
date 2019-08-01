@@ -35,9 +35,9 @@ public:
     friend
     class matrix_sum;
 
-    matrix<T> resolve_all() const {
+    matrix<T> resolve_all() {
         std::vector<std::future<matrix<T>>> futures;
-        for (auto &&aux : operations) {
+        for (auto &&aux : operands) {
             futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
         while (futures.size() > 1) {
@@ -67,11 +67,11 @@ public:
     }
 
     unsigned get_height() const {
-        return operations.front()->get_height();
+        return operands.front()->get_height();
     }
 
     unsigned get_width() const {
-        return operations.front()->get_width();
+        return operands.front()->get_width();
     }
 
     /**
@@ -111,7 +111,7 @@ public:
     std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
     friend operator+( matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
 
-    matrix_sum(matrix_sum<T, h, w> &&X) : operations(std::move(X.operations)) {}
+    matrix_sum(matrix_sum<T, h, w> &&X) : operands(std::move(X.operands)) {}
 
     matrix_sum(const matrix_sum<T, h, w> &X) = delete;
 
@@ -119,13 +119,13 @@ public:
 
 
 private:
-    //TODO maybe it is better to use a std::list<std::unique_ptr<matrix_expression<T>>>
-    std::list<std::unique_ptr<matrix_expression<T>>> operations;
+
+    std::list<std::unique_ptr<matrix_expression<T>>> operands;
 
     matrix_sum() = default;
 
     void add(std::unique_ptr<matrix_expression<T>> &&mat) {
-        operations.push_back(std::move(mat));
+        operands.push_back(std::move(mat));
     }
 
 };
@@ -144,8 +144,8 @@ template<typename T, typename U, class LType, class RType>
 std::enable_if_t<matrix_ref<T, LType>::H != 0 && matrix_ref<U, RType>::H != 0,
         matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W>>
 operator+(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
-    static_assert((matrix_ref<T, LType>::W == matrix_ref<T, RType>::W) &&
-                  (matrix_ref<T, LType>::H == matrix_ref<T, RType>::H),
+    static_assert((matrix_ref<T, LType>::W == matrix_ref<U, RType>::W) &&
+                  (matrix_ref<T, LType>::H == matrix_ref<U, RType>::H),
                   "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), matrix_ref<T, LType>::H, matrix_ref<T, LType>::W> result;
     result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(lhs)));

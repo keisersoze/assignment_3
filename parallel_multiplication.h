@@ -60,7 +60,7 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
             result_window_spec.col_end = result.get_width() - 1;
         }
         ThreadPool::getSingleton().enqueue(real_multiplication<T>, result, result_window_spec, lhs_sub,
-                rhs.get_submatrix(r_window_spec));
+                                           rhs.get_submatrix(r_window_spec));
     }
 
 
@@ -68,7 +68,7 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
 
 template<typename T>
 void
-row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs, int &i) {
+row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
     window_spec l_wlindow_spec = {0, 0, 0, 0};
     l_wlindow_spec.row_start = row_start;
     if (row_start + BLOCK_DIM < lhs.get_height() - 1) {
@@ -94,23 +94,28 @@ row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T>
 
 
 template<typename T>
-void do_multiply(matrix_wrap<T> result, matrix_wrap<T> lhs, matrix_wrap<T> rhs) {
+matrix<T> do_multiply(matrix<T> lhs, matrix<T> rhs) {
+    matrix<T> result(lhs.get_height(), rhs.get_width());
     const unsigned height = result.get_height();
     const unsigned width = result.get_width();
     const unsigned span = lhs.get_width();
-
     assert(span == rhs.get_height());
-    int i;
-
-    for (i = 0; i != height; ++i) {
+    std::vector<std::future<void>> threads;
+    for (unsigned i = 0; i != height; ++i) {
         for (unsigned j = 0; j != width; ++j) {
             result(i, j) = 0;
         }
     }
-    for (i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
-        ThreadPool::getSingleton().enqueue(row_multiply<T>, result, i, lhs, rhs, i);
+    matrix_wrap<T> aux = matrix_wrap(result);
+    matrix_wrap<T> aux2 = matrix_wrap(lhs);
+    matrix_wrap<T> aux3 = matrix_wrap(rhs);
+    for (unsigned  i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
+        threads.push_back(ThreadPool::getSingleton().enqueue(row_multiply<T>, aux, i, aux2, aux3));
     }
-
+    for (unsigned long i=0; i < threads.size(); ++i){
+        threads[i].get();
+    }
+    return result;
 }
 
 #endif //ASSIGNMENT_3_PARALLEL_MULTIPLICATION_H

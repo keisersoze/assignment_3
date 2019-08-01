@@ -10,7 +10,7 @@
 template<typename T>
 class matrix_expression {
 public:
-    virtual matrix<T> resolve_all() const = 0;
+    virtual matrix<T> resolve_all() = 0;
 
     virtual unsigned get_height() const = 0 ;
 
@@ -26,7 +26,7 @@ public:
     template<class matrix_type>
     matrix_singleton(matrix_ref<T, matrix_type> m): singleton(m){};
 
-    matrix<T> resolve_all() const {
+    matrix<T> resolve_all() {
         return this->singleton;
     }
 

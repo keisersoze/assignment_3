@@ -9,6 +9,7 @@
 
 #include"matrix.h"
 #include"matrix_sum.h"
+#include"matrix_product.h"
 
 template<typename T>
 void initializeCells(matrix<T> &m) {
@@ -63,11 +64,16 @@ int main() {
     initializeCells(m2);
     matrix<int> m3(10,13);
     initializeCells(m3);
+
+    matrix<int> m10 = m3.transpose();
     matrix<int> res11 = m1 + m2;
     matrix<int> res22 = m1 + m2 + m1;
     matrix<int> res33 = (m1 + m2) + m1;
     matrix<int> res44 = m1 + (m2 + m1);
 
+    matrix<int> res = m3 * m10;
+
+    std::cout << "eeeeee";
     //matrix<int> XD = result + result;
 
 }
