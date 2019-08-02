@@ -31,11 +31,12 @@ public:
             auto lhs = find_max_and_update(futures);
             auto rhs = lhs;
             ++rhs;
-            auto result = futures.insert(lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>, (*lhs).get(), (*rhs).get()));
-            futures.erase(lhs);
+            futures.insert(lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>, (*lhs).get(), (*rhs).get()));
+            //TODO check order
+            futures.erase(lhs+1);
             futures.erase(rhs);
         }
-        return do_multiply(futures[0].get(), futures[1].get());
+        return do_multiply(futures[0].get(),futures[1].get());
     }
 
     operator matrix<T>() {
@@ -204,15 +205,15 @@ operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
  * @tparam h height of matrix_sum
  * @tparam w width of matrix_sum
  * @tparam RType inner type of matrix_ref
- * @param lhs matrix_sum
+ * @param lhs matrix_product
  * @param rhs matrix_ref
- * @return the same matrix_sum with a the matrix_ref appended
+ * @return the same matrix_product with a the matrix_ref appended
  */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(T() * U()), 0, 0>>
 operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
-    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
-        throw std::domain_error("dimension mismatch in Matrix addition");
+    if (lhs.get_width() != rhs.get_height()) {
+        throw std::domain_error("dimension mismatch in Matrix product");
     }
     matrix_product<decltype(T() + U()), h, w> result(std::move(lhs));
     result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));

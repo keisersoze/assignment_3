@@ -58,20 +58,20 @@ int main() {
     matrix<int, 10, 13> res3 = (mC + mB) + mA.transpose().transpose();
     matrix<int, 10, 13> res4 = mC + (mB + mA);
 
-    matrix<int> m1(10,13);
+    matrix<int> m1(10,10);
     initializeCells(m1);
-    matrix<int> m2(10,13);
+    matrix<int> m2(10,10);
     initializeCells(m2);
     matrix<int> m3(10,13);
     initializeCells(m3);
 
-    matrix<int> m10 = m3.transpose();
-    matrix<int> res11 = m1 + m2;
-    matrix<int> res22 = m1 + m2 + m1;
-    matrix<int> res33 = (m1 + m2) + m1;
-    matrix<int> res44 = m1 + (m2 + m1);
+//    matrix<int> m10 = m3.transpose();
+//    matrix<int> res11 = m1 + m2;
+//    matrix<int> res22 = m1 + m2 + m1;
+//    matrix<int> res33 = (m1 + m2) + m1;
+//    matrix<int> res44 = m1 + (m2 + m1);
 
-    matrix<int> res = m3 * m10;
+    matrix<int> res = m1 * m2 * m1;
 
     std::cout << "eeeeee";
     //matrix<int> XD = result + result;
