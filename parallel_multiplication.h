@@ -30,7 +30,7 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
     matrix<T> lhs_sub = lhs.get_submatrix(l_window_spec);
     window_spec r_window_spec = {0, 0, 0, 0};
     r_window_spec.row_start = row_start_rhs;
-
+    std::vector<std::future<void>> threads;
     if (row_start_rhs + BLOCK_DIM < rhs.get_height() - 1) {
         r_window_spec.row_end = row_start_rhs + BLOCK_DIM - 1;
     } else {
@@ -59,8 +59,11 @@ void thread_multiplication(matrix_wrap<T> result, window_spec l_window_spec, con
         } else {
             result_window_spec.col_end = result.get_width() - 1;
         }
-        ThreadPool::getSingleton().enqueue(real_multiplication<T>, result, result_window_spec, lhs_sub,
-                                           rhs.get_submatrix(r_window_spec));
+        threads.push_back(ThreadPool::getSingleton().enqueue(real_multiplication<T>, result, result_window_spec, lhs_sub,
+                                           rhs.get_submatrix(r_window_spec)));
+    }
+    for (unsigned long i = 0; i < threads.size(); ++i) {
+        threads[i].get();
     }
 
 
@@ -71,6 +74,7 @@ void
 row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
     window_spec l_wlindow_spec = {0, 0, 0, 0};
     l_wlindow_spec.row_start = row_start;
+    std::vector<std::future<void>> threads;
     if (row_start + BLOCK_DIM < lhs.get_height() - 1) {
         l_wlindow_spec.row_end = row_start + BLOCK_DIM - 1;
     } else {
@@ -87,8 +91,11 @@ row_multiply(matrix_wrap<T> result, unsigned int row_start, const matrix_wrap<T>
             l_wlindow_spec.col_end = lhs.get_width() - 1;
         }
 
-        ThreadPool::getSingleton().enqueue(thread_multiplication<T>, result, l_wlindow_spec, lhs, rhs);
-
+        threads.push_back(
+                ThreadPool::getSingleton().enqueue(thread_multiplication<T>, result, l_wlindow_spec, lhs, rhs));
+    }
+    for (unsigned long i = 0; i < threads.size(); ++i) {
+        threads[i].get();
     }
 }
 
@@ -109,10 +116,10 @@ matrix<T> do_multiply(matrix<T> lhs, matrix<T> rhs) {
     matrix_wrap<T> aux = matrix_wrap(result);
     matrix_wrap<T> aux2 = matrix_wrap(lhs);
     matrix_wrap<T> aux3 = matrix_wrap(rhs);
-    for (unsigned  i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
+    for (unsigned i = 0; i < lhs.get_height(); i += BLOCK_DIM) {
         threads.push_back(ThreadPool::getSingleton().enqueue(row_multiply<T>, aux, i, aux2, aux3));
     }
-    for (unsigned long i=0; i < threads.size(); ++i){
+    for (unsigned long i = 0; i < threads.size(); ++i) {
         threads[i].get();
     }
     return result;
