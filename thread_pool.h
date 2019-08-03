@@ -93,7 +93,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args)
 }
 
 inline ThreadPool &ThreadPool::getSingleton() {
-    static ThreadPool singleton(std::thread::hardware_concurrency());
+    static ThreadPool singleton(1000);
 
     return singleton;
 }
