@@ -111,6 +111,8 @@ void row_product_column(matrix<T> &result, unsigned lhs_row_index, unsigned  rhs
 }
  */
 
+#define BLOCK_DIM 32
+
 template<typename T>
 void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_spec rhs_window,
                          const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
@@ -123,6 +125,7 @@ void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_s
     result_window.col_start = rhs_window.col_start;
     result_window.col_end = rhs_window.col_end;
 
+    //Only here we load real data
     matrix<T> lhs_sub = lhs.get_submatrix(lhs_window);
     matrix<T> rhs_sub = lhs.get_submatrix(rhs_window);
 
@@ -137,11 +140,27 @@ void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_s
 
 
 template<typename T>
-void blockrow_product_blockcolumn(matrix<T> &result, unsigned lhs_row_index, unsigned rhs_column_index,
+void blockrow_product_blockcolumn(matrix_wrap<T> &result, window_spec lhs_window, window_spec rhs_window,
                                   const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
 
-
+    assert ( lhs_window.col_start == 0 && rhs_window.row_start == 0 && lhs_window.col_end == lhs.get_width() && rhs_window.row_end == rhs.get_height());
+    unsigned i = BLOCK_DIM - 1;
+    for (; i < lhs_window.col_end ; i+= BLOCK_DIM){
+        window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - BLOCK_DIM, i};
+        window_spec rhs_window_matrix = { i - BLOCK_DIM, i, lhs_window.col_start, lhs_window.col_end};
+        block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
+    }
+    window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i, lhs_window.col_end};
+    window_spec rhs_window_matrix = { i, rhs_window.row_end, lhs_window.col_start, lhs_window.col_end};
+    block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
 }
+
+template<typename T>
+void blockrow_product_matrix(matrix_wrap<T> &result, window_spec lhs_window, window_spec rhs_window,
+                             const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+    
+}
+
 
 template<typename T>
 matrix<T> do_multiply(matrix<T> lhs, matrix<T> rhs) {
