@@ -28,15 +28,14 @@ public:
             futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
         while (futures.size() > 2) {
-            auto lhs = find_max_and_update(futures);
-            auto rhs = lhs;
-            ++rhs;
-            futures.insert(lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>, (*lhs).get(), (*rhs).get()));
-            //TODO check order
-            futures.erase(lhs+1);
-            futures.erase(rhs);
+            unsigned lhs = find_max_and_update(futures);
+            unsigned rhs = lhs + 1;
+            futures.insert(futures.begin() + lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>,
+                    (*(futures.begin() + lhs)).get(), (*(futures.begin() + rhs)).get()));
+            futures.erase(futures.begin() + rhs);
+            futures.erase(futures.begin() + rhs);
         }
-        return do_multiply(futures[0].get(),futures[1].get());
+        return do_multiply(futures[0].get(), futures[1].get());
     }
 
     operator matrix<T>() {
@@ -70,22 +69,24 @@ private:
     }
 
 
-    typename std::vector<std::future<matrix<T>>>::iterator find_max_and_update(
+    unsigned find_max_and_update(
             std::vector<std::future<matrix<T>>> &futures) {
         auto mat_iter = futures.begin();
-        auto mat_max = mat_iter;
         auto size_iter = sizes.begin();
         auto size_iter_max = sizes.begin();
         auto last = --(sizes.end());
+        unsigned mat_max = 0;
         unsigned size_max = *size_iter;
+        unsigned i = 0;
         while (size_iter != last) {
             if (*size_iter > size_max) {
                 size_max = *size_iter;
                 size_iter_max = size_iter;
-                mat_max = mat_iter;
+                mat_max = i;
             }
             ++mat_iter;
             ++size_iter;
+            ++i;
         }
         sizes.erase(size_iter_max);
         return mat_max;
@@ -100,6 +101,7 @@ private:
     std::enable_if_t<
             matrix_ref<V, LType>::H == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
     friend operator*(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
+
     template<typename V, typename U, unsigned hl, unsigned wl, class RType>
     std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0,
             matrix_product<decltype(V() + U()), hl, matrix_ref<V, RType>::W>>
@@ -110,7 +112,8 @@ private:
     friend operator*(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
 
     template<typename V, typename U, unsigned hl, unsigned wl, class RType>
-    std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(V() * U()), hl, matrix_ref<U, RType>::W>>
+    std::enable_if_t<
+            hl != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(V() * U()), hl, matrix_ref<U, RType>::W>>
     friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
 
     template<typename V, typename U, unsigned hl, unsigned wl, class RType>
@@ -188,7 +191,7 @@ operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
  */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
 std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0,
-matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W>>
+        matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W>>
 operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == w),
                   "dimension mismatch in Matrix multiplication");
@@ -232,7 +235,8 @@ operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
  * @return the same matrix_sum with a the matrix_ref appended
 */
 template<typename T, typename U, unsigned h, unsigned w, class RType>
-std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(T() * U()), h, matrix_ref<U, RType>::W>>
+std::enable_if_t<
+        h != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(T() * U()), h, matrix_ref<U, RType>::W>>
 operator*(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::W == h),
                   "dimension mismatch in Matrix multiplication");
@@ -305,8 +309,8 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_product<decltype(T() + U()), hl, wl> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>> (std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>> (std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 

@@ -71,7 +71,7 @@ int main() {
 //    matrix<int> res33 = (m1 + m2) + m1;
 //    matrix<int> res44 = m1 + (m2 + m1);
 
-    matrix<int> res = m1 * m2 * m1;
+    matrix<int> res = m1 * m2 * m1 * m1 ;
 
     std::cout << "eeeeee";
     //matrix<int> XD = result + result;
