@@ -99,59 +99,7 @@ row_product_matrix(matrix_wrap<T> result, unsigned int row_start, const matrix_w
 }
 **/
 
-
 /*
-#define BLOCK_DIM 32
-
-template<typename T>
-void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_spec rhs_window,
-                        const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
-
-   assert(lhs_window.row_end - lhs_window.row_start == rhs_window.col_end - lhs_window.col_start);
-
-   window_spec result_window = {0, 0, 0, 0};
-   result_window.row_start = lhs_window.row_start;
-   result_window.row_end = lhs_window.row_end;
-   result_window.col_start = rhs_window.col_start;
-   result_window.col_end = rhs_window.col_end;
-
-   //Only here we load real data
-   matrix<T> lhs_sub = lhs.get_submatrix(lhs_window);
-   matrix<T> rhs_sub = lhs.get_submatrix(rhs_window);
-
-   for (unsigned i = 0; i < lhs_sub.get_width(); ++i) {
-       for (unsigned j = 0; j < rhs_sub.get_width(); ++j) {
-           for (unsigned k = 0; k < lhs_sub.get_height(); ++k) {
-               result(result_window.row_start + i, result_window.col_start + j) += lhs_sub(i, k) * rhs_sub(k, j);
-           }
-       }
-   }
-}
-
-
-template<typename T>
-void blockrow_product_blockcolumn(matrix_wrap<T> &result, window_spec lhs_window, window_spec rhs_window,
-                                 const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
-
-   assert ( lhs_window.col_start == 0 && rhs_window.row_start == 0 && lhs_window.col_end == lhs.get_width() && rhs_window.row_end == rhs.get_height());
-   unsigned i = BLOCK_DIM - 1;
-   for (; i < lhs_window.col_end ; i+= BLOCK_DIM){
-       window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - BLOCK_DIM, i};
-       window_spec rhs_window_matrix = { i - BLOCK_DIM, i, lhs_window.col_start, lhs_window.col_end};
-       block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
-   }
-   window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i, lhs_window.col_end};
-   window_spec rhs_window_matrix = { i, rhs_window.row_end, lhs_window.col_start, lhs_window.col_end};
-   block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
-}
-
-template<typename T>
-void blockrow_product_matrix(matrix_wrap<T> &result, window_spec lhs_window, window_spec rhs_window,
-                            const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
-
-}
-
-*/
 
 template<typename T>
 void row_product_column(matrix<T> &result, unsigned lhs_row_index, unsigned rhs_column_index, const matrix<T> &lhs,
@@ -161,6 +109,53 @@ void row_product_column(matrix<T> &result, unsigned lhs_row_index, unsigned rhs_
     }
 }
 
+*/
+
+#define BLOCK_DIM 32
+
+template<typename T>
+void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_spec rhs_window,
+                         const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+
+    assert(lhs_window.row_end - lhs_window.row_start == rhs_window.col_end - lhs_window.col_start);
+
+    window_spec result_window = {0, 0, 0, 0};
+    result_window.row_start = lhs_window.row_start;
+    result_window.row_end = lhs_window.row_end;
+    result_window.col_start = rhs_window.col_start;
+    result_window.col_end = rhs_window.col_end;
+
+    //Only here we load real data
+    matrix<T> lhs_sub = lhs.get_submatrix(lhs_window);
+    matrix<T> rhs_sub = lhs.get_submatrix(rhs_window);
+
+    for (unsigned i = 0; i < lhs_sub.get_width(); ++i) {
+        for (unsigned j = 0; j < rhs_sub.get_width(); ++j) {
+            for (unsigned k = 0; k < lhs_sub.get_height(); ++k) {
+                result(result_window.row_start + i, result_window.col_start + j) += lhs_sub(i, k) * rhs_sub(k, j);
+            }
+        }
+    }
+}
+
+
+template<typename T>
+void blockrow_product_blockcolumn(matrix_wrap<T> result, window_spec lhs_window, window_spec rhs_window,
+                                  const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+
+    assert (lhs_window.col_start == 0 && rhs_window.row_start == 0 && lhs_window.col_end == lhs.get_width() - 1 &&
+            rhs_window.row_end == rhs.get_height() - 1);
+
+    unsigned i = BLOCK_DIM - 1;
+    for (; i < lhs_window.col_end; i += BLOCK_DIM) {
+        window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - BLOCK_DIM - 1, i};
+        window_spec rhs_window_matrix = {i - BLOCK_DIM - 1, i, lhs_window.col_start, lhs_window.col_end};
+        block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
+    }
+    window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - BLOCK_DIM - 1, lhs_window.col_end};
+    window_spec rhs_window_matrix = {i - BLOCK_DIM - 1, rhs_window.row_end, lhs_window.col_start, lhs_window.col_end};
+    block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
+}
 
 template<typename T>
 matrix<T> do_multiply(matrix<T> lhs, matrix<T> rhs) {
@@ -175,13 +170,35 @@ matrix<T> do_multiply(matrix<T> lhs, matrix<T> rhs) {
             result(i, j) = 0;
         }
     }
-    for (unsigned i = 0; i < lhs.get_height(); i++) {
-        for (unsigned j = 0; j < rhs.get_width(); j++) {
+
+    unsigned i = BLOCK_DIM - 1;
+    for (; i < lhs.get_height(); i += BLOCK_DIM) {
+        window_spec lhs_window = {i - BLOCK_DIM - 1, i , 0, lhs.get_width() - 1};
+        unsigned j = BLOCK_DIM - 1;
+        for (; j < rhs.get_width() - 1; j += BLOCK_DIM) {
+            window_spec rhs_window = {0, rhs.get_height() - 1, j - BLOCK_DIM - 1 , j};
             futures.push_back(
-                    ThreadPool::getSingleton().enqueue(row_product_column<T>, std::ref(result), i, j, std::cref(lhs),
-                                                       std::cref(rhs)));
+                    ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn < T > , result, lhs_window, rhs_window,
+                            std::cref(lhs), std::cref(rhs)));
         }
+        window_spec rhs_window = {0, rhs.get_height() - 1, j - BLOCK_DIM - 1 , rhs.get_width() - 1 };
+        futures.push_back(
+                ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn < T > , result, lhs_window, rhs_window,
+                        std::cref(lhs), std::cref(rhs)));
     }
+    window_spec lhs_window = {i - BLOCK_DIM - 1 , lhs.get_height() - 1 , 0, lhs.get_width() - 1};
+    unsigned j = BLOCK_DIM - 1;
+    for (; j < rhs.get_width() - 1; j += BLOCK_DIM) {
+        window_spec rhs_window = {0, rhs.get_height() - 1, j - BLOCK_DIM - 1 , j};
+        futures.push_back(
+                ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn < T > , result, lhs_window, rhs_window,
+                                                   std::cref(lhs), std::cref(rhs)));
+    }
+    window_spec rhs_window = {0, rhs.get_height() - 1, j - BLOCK_DIM - 1 , rhs.get_width() - 1 };
+    futures.push_back(
+            ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn < T > , result, lhs_window, rhs_window,
+                                               std::cref(lhs), std::cref(rhs)));
+
     for (unsigned long i = 0; i < futures.size(); ++i) {
         futures[i].get();
     }

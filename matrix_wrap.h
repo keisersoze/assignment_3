@@ -178,6 +178,7 @@ struct matrix_wrap_impl {
 
     virtual const T &get(unsigned i, unsigned j) const = 0;
 
+    //TODO this is an interface move down the impl
     matrix<T> get_submatrix(window_spec spec) {
         unsigned int height = spec.row_end - spec.row_start + 1;
         unsigned int width = spec.col_end - spec.col_start + 1;

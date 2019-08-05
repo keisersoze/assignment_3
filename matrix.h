@@ -579,7 +579,7 @@ public:
         data = std::make_shared<std::vector<T>>(width * height);
         *data = *(X.data);
 
-        // std::cerr << "matrix copy constructor\n";
+        std::cerr << "matrix copy constructor\n";
     }
 
     matrix(matrix<T> &&X) {
