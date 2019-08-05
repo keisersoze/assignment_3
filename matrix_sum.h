@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 template<typename T>
-matrix<T> sum(const matrix<T> &m1, const matrix<T> &m2) {
+matrix_wrap<T> sum(const matrix_wrap<T> &m1, const matrix_wrap<T> &m2) {
     unsigned height = m1.get_height();
     unsigned width = m1.get_width();
     matrix<T> result(height, width);
@@ -24,7 +24,7 @@ matrix<T> sum(const matrix<T> &m1, const matrix<T> &m2) {
             result(j, k) = m1(j, k) + m2(j, k);
         }
     }
-    return result;
+    return matrix_wrap(result);
 }
 
 template<typename T, unsigned h, unsigned w>
@@ -35,16 +35,16 @@ public:
     friend
     class matrix_sum;
 
-    matrix<T> resolve_all() {
-        std::vector<std::future<matrix<T>>> futures;
+    matrix_wrap<T> resolve_all() {
+        std::vector<std::future<matrix_wrap<T>>> futures;
         for (auto &&aux : operands) {
             futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
         while (futures.size() > 1) {
-            std::vector<std::future<matrix<T>>> futures_aux;
+            std::vector<std::future<matrix_wrap<T>>> futures_aux;
             for (unsigned i = 0; i < futures.size() - 1; i += 2) {
-                matrix<T> m1 = futures[i].get();
-                matrix<T> m2 = futures[i + 1].get();
+                matrix_wrap<T> m1 = futures[i].get();
+                matrix_wrap<T> m2 = futures[i + 1].get();
                 futures_aux.push_back(ThreadPool::getSingleton().enqueue(sum<T>, m1, m2));
             }
             if (futures.size() % 2) {
@@ -56,14 +56,15 @@ public:
     }
 
     operator matrix<T>() {
-        return resolve_all();
+        matrix_wrap <T> res = resolve_all();
+        return res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
     }
 
     template<unsigned h2, unsigned w2>
     operator matrix<T, h2, w2>() {
         static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
-        // TODO anderstand uai dis faching fanscion is wurking
-        return (matrix<T, h2, w2>) resolve_all();
+        matrix_wrap <T> res = resolve_all();
+        return (matrix<T, h2, w2>) res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
     }
 
     unsigned get_height() const {
@@ -279,7 +280,6 @@ operator+(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
     matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
     result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hl, wl>>(std::move(lhs))));
     return result;
 
 }
@@ -305,7 +305,6 @@ operator+( matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     }
     matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
     result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 

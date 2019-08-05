@@ -22,8 +22,8 @@ public:
 
     void update_sizes() const;
 
-    matrix<T> resolve_all() {
-        std::vector<std::future<matrix<T>>> futures;
+    matrix_wrap<T> resolve_all() {
+        std::vector<std::future<matrix_wrap<T>>> futures;
         for (auto &&aux : operands) {
             futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
@@ -31,7 +31,8 @@ public:
             unsigned lhs = find_max_and_update(futures);
             unsigned rhs = lhs + 1;
             futures.insert(futures.begin() + lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>,
-                    (*(futures.begin() + lhs)).get(), (*(futures.begin() + rhs)).get()));
+                                                                                     (*(futures.begin() + lhs)).get(),
+                                                                                     (*(futures.begin() + rhs)).get()));
             futures.erase(futures.begin() + rhs);
             futures.erase(futures.begin() + rhs);
         }
@@ -39,13 +40,15 @@ public:
     }
 
     operator matrix<T>() {
-        return resolve_all();
+        matrix_wrap<T> res = resolve_all();
+        return res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() -1});
     }
 
     template<unsigned h2, unsigned w2>
     operator matrix<T, h2, w2>() {
         static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
-        return (matrix<T, h2, w2>) resolve_all();
+        matrix_wrap<T> res = resolve_all();
+        return (matrix<T, h2, w2>) res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
     }
 
     unsigned get_height() const { return operands.front()->get_height(); }
@@ -70,7 +73,7 @@ private:
 
 
     unsigned find_max_and_update(
-            std::vector<std::future<matrix<T>>> &futures) {
+            std::vector<std::future<matrix_wrap<T>>> &futures) {
         auto mat_iter = futures.begin();
         auto size_iter = sizes.begin();
         auto size_iter_max = sizes.begin();
@@ -128,7 +131,7 @@ private:
     std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
     friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
 
-    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
     std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
     friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
 };
@@ -285,7 +288,6 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix addition");
     matrix_product<decltype(T() * U()), hl, wr> result(std::move(lhs));
     result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 
@@ -302,7 +304,7 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
  * @param rhs the second matrix sum
  * @return the first matrix_sum having as last element the second matrix_sum
 */
-template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr, class RType>
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
 std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(T() * U()), 0, 0>>
 operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     if (lhs.get_width() != rhs.get_height()) {
@@ -310,7 +312,6 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     }
     matrix_product<decltype(T() + U()), hl, wl> result(std::move(lhs));
     result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 
