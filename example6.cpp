@@ -8,8 +8,8 @@
 #include <memory>
 
 #include"matrix.h"
-#include"matrix_sum.h"
-#include"matrix_product.h"
+#include "matrix_sum.h"
+#include "matrix_product.h"
 
 template<typename T>
 void initializeCells(matrix<T> &m) {

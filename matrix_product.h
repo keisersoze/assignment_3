@@ -5,85 +5,159 @@
 #ifndef ASSIGNMENT_3_MATRIX_PRODUCT_CC
 #define ASSIGNMENT_3_MATRIX_PRODUCT_CC
 
-#include<type_traits>
-#include<list>
+#include <type_traits>
+#include <list>
 #include <thread>
 #include "parallel_multiplication.h"
 #include "matrix_expression.h"
 #include "thread_pool.h"
-
 template<typename T, unsigned h, unsigned w>
-matrix_wrap<T> matrix_product<T, h, w>::resolve_all() {
-    std::vector<std::future<matrix_wrap<T>>> futures;
-    for (auto &&aux : operands) {
-        futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
-    }
-    while (futures.size() > 2) {
-        unsigned lhs = find_max_and_update(futures);
-        unsigned rhs = lhs + 1;
-        futures.insert(futures.begin() + lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>,
-                                                                                 (*(futures.begin() + lhs)).get(),
-                                                                                 (*(futures.begin() + rhs)).get()));
-        futures.erase(futures.begin() + rhs);
-        futures.erase(futures.begin() + rhs);
-    }
-    return do_multiply(futures[0].get(), futures[1].get());
-}
+class matrix_product : public matrix_expression<T> {
+public:
+    template<typename T2, unsigned h2, unsigned w2>
+    friend
+    class matrix_sum;
+    template<typename T2, unsigned h2, unsigned w2>
+    friend
+    class matrix_product;
 
-template<typename T, unsigned h, unsigned w>
-matrix_product<T, h, w>::operator matrix<T>() {
-    matrix_wrap<T> res = resolve_all();
-    return res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
-}
-
-template<typename T, unsigned h, unsigned w>
-template<unsigned h2, unsigned w2>
-matrix_product<T, h, w>::operator matrix<T, h2, w2>() {
-    static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
-    matrix_wrap<T> res = resolve_all();
-    return (matrix<T, h2, w2>) res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
-}
-
-template<typename T, unsigned h, unsigned w>
-unsigned matrix_product<T, h, w>::get_height() const { return operands.front()->get_height(); }
-
-template<typename T, unsigned h, unsigned w>
-unsigned matrix_product<T, h, w>::get_width() const { return operands.back()->get_width(); }
-
-template<typename T, unsigned h, unsigned w>
-template<unsigned w2>
-matrix_product<T, h, w>::matrix_product(matrix_product<T, h, w2> &&X) :operands(std::move(X.operands)),
-                                                                       sizes(std::move(X.sizes)) {}
-
-template<typename T, unsigned h, unsigned w>
-void matrix_product<T, h, w>::add(std::unique_ptr<matrix_expression<T>> &&mat) {
-    sizes.push_back(mat->get_width());
-    operands.push_back(std::move(mat));
-}
-
-template<typename T, unsigned h, unsigned w>
-unsigned matrix_product<T, h, w>::find_max_and_update(
-        std::vector<std::future<matrix_wrap<T>>> &futures) {
-    auto mat_iter = futures.begin();
-    auto size_iter = sizes.begin();
-    auto size_iter_max = sizes.begin();
-    auto last = --(sizes.end());
-    unsigned mat_max = 0;
-    unsigned size_max = *size_iter;
-    unsigned i = 0;
-    while (size_iter != last) {
-        if (*size_iter > size_max) {
-            size_max = *size_iter;
-            size_iter_max = size_iter;
-            mat_max = i;
+    matrix_wrap<T> resolve_all(){
+        std::vector<std::future<matrix_wrap<T>>> futures;
+        for (auto &&aux : expressions) {
+            futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
         }
-        ++mat_iter;
-        ++size_iter;
-        ++i;
+        while (futures.size() > 2) {
+            unsigned lhs = find_max_and_update(futures);
+            unsigned rhs = lhs + 1;
+            futures.insert(futures.begin() + lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>,
+                                                                                     (*(futures.begin() + lhs)).get(),
+                                                                                     (*(futures.begin() + rhs)).get()));
+            futures.erase(futures.begin() + rhs);
+            futures.erase(futures.begin() + rhs);
+        }
+        return do_multiply(futures[0].get(), futures[1].get());
     }
-    sizes.erase(size_iter_max);
-    return mat_max;
-}
+
+    operator matrix<T>(){
+        matrix_wrap<T> res = resolve_all();
+        return res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
+    }
+
+    template<unsigned h2, unsigned w2>
+    operator matrix<T, h2, w2>(){
+        static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
+        matrix_wrap<T> res = resolve_all();
+        return (matrix<T, h2, w2>) res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
+    }
+
+    unsigned get_height() const{ return expressions.front()->get_height(); }
+
+    unsigned get_width() const{ return expressions.back()->get_width(); }
+
+    matrix_product(matrix_product<T, h, w> &&X) : expressions(std::move(X.expressions)),
+                                                  sizes(std::move(X.sizes)) {};
+
+private:
+    std::list<std::unique_ptr<matrix_expression<T>>> expressions;
+    std::vector<unsigned> sizes;
+
+    matrix_product() = default;
+
+    template<unsigned w2>
+    matrix_product(matrix_product<T, h, w2> &&X);
+
+    void add(std::unique_ptr<matrix_expression<T>> &&mat){
+        sizes.push_back(mat->get_width());
+        expressions.push_back(std::move(mat));
+    }
+
+    unsigned find_max_and_update(std::vector<std::future<matrix_wrap<T>>> &futures){
+        auto mat_iter = futures.begin();
+        auto size_iter = sizes.begin();
+        auto size_iter_max = sizes.begin();
+        auto last = --(sizes.end());
+        unsigned mat_max = 0;
+        unsigned size_max = *size_iter;
+        unsigned i = 0;
+        while (size_iter != last) {
+            if (*size_iter > size_max) {
+                size_max = *size_iter;
+                size_iter_max = size_iter;
+                mat_max = i;
+            }
+            ++mat_iter;
+            ++size_iter;
+            ++i;
+        }
+        sizes.erase(size_iter_max);
+        return mat_max;
+    }
+
+    template<typename V, typename U, class LType, class RType>
+    std::enable_if_t<matrix_ref<V, LType>::H != 0 && matrix_ref<U, RType>::H != 0,
+            matrix_product<decltype(V() * U()), matrix_ref<V, LType>::H, matrix_ref<U, RType>::W>>
+    friend operator*(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, class LType, class RType>
+    std::enable_if_t<
+            matrix_ref<V, LType>::H == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<V, LType> &lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0,
+            matrix_product<decltype(V() + U()), hl, matrix_ref<V, RType>::W>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<
+            hl != 0 && matrix_ref<U, RType>::H != 0, matrix_product<decltype(V() * U()), hl, matrix_ref<U, RType>::W>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(const matrix_ref<U, RType> &lhs, matrix_product<V, hl, wl> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
+    friend operator*(matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
+    friend operator*(matrix_sum<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_sum<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(V() * U()), hl, wr>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_product<decltype(V() * U()), 0, 0>>
+    friend operator*(matrix_product<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+};
+
 
 /**
  * Static overload of product operation between matrix_ref and matrix_ref
