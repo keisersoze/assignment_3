@@ -13,4 +13,14 @@ template<typename T, class matrix_type=Plain> class matrix_ref;
 
 struct window_spec { unsigned row_start, row_end, col_start, col_end; };
 
+
+template<typename T>
+class matrix_expression;
+
+template<typename T, unsigned h, unsigned w>
+class matrix_product;
+
+template<typename T, unsigned h, unsigned w>
+class matrix_sum;
+
 #endif //_MATRIX_FWD_H_

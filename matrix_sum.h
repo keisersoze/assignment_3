@@ -10,7 +10,7 @@
 #include <thread>
 #include "parallel_multiplication.h"
 #include "matrix_expression.h"
-
+#include "matrix_fwd.h"
 #include "thread_pool.h"
 #include <unistd.h>
 
@@ -134,6 +134,30 @@ private:
     template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
     std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
     friend operator+(matrix_sum<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(V() + U()), hl, wl>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(V() + U()), hl, wl>>
+    friend operator+(matrix_sum<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
+    friend operator+(matrix_sum<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(V() + U()), hl, wl>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+    std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
 };
 
 
@@ -220,7 +244,8 @@ template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned
 std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(T() + U()), hl, wl>>
 operator+(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
-    matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
+    matrix_sum<decltype(T() + U()), hl,wl> result;
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(lhs))));
     result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
     return result;
 
@@ -236,8 +261,89 @@ operator+(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
-    matrix_sum<decltype(T() + U()), hl, wl> result(std::move(lhs));
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(lhs))));
     result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    return result;
+}
+
+/**
+ * Static overload for sum operation between matrix_product and matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(T() + U()), hl, wl>>
+operator+(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
+    static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
+    matrix_sum<decltype(T() + U()), hl,wl> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hl, wl>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    return result;
+
+}
+
+
+/**
+ * Dynamic overload for sum operation between matrix_product and matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hl, wl>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    return result;
+}
+
+/**
+ * Static overload for sum operation between matrix_product and matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(T() + U()), hl, wl>>
+operator+(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    return rhs+lhs;
+
+}
+
+
+/**
+ * Dynamic overload for sum operation between matrix_product and matrix_sum
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    return rhs+lhs;
+}
+
+/**
+ * Static overload for sum operation between matrix_product and matrix_product
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl != 0 && hr != 0, matrix_sum<decltype(T() + U()), hl, wl>>
+operator+(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    static_assert(hl == hr && wl == wr, "dimension mismatch in Matrix addition");
+    matrix_sum<decltype(T() + U()), hl,wl> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hl, wl>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hr, wr>>(std::move(rhs))));
+    return result;
+
+}
+
+
+/**
+ * Dynamic overload for sum operation between matrix_product and matrix_product
+*/
+template<typename T, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
+std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hl, wl>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
