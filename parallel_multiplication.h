@@ -9,7 +9,7 @@
 #include <iostream>
 
 
-#define BLOCK_DIM 2
+#define BLOCK_DIM 64
 
 template<typename T>
 void block_product_block(matrix_wrap<T> result, window_spec lhs_window, window_spec rhs_window,

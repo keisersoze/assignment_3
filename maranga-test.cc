@@ -6,7 +6,8 @@
 
 #include"matrix.h"
 #include"matrix_wrap.h"
-#include"operations.h"
+#include "matrix_product.h"
+#include "matrix_sum.h"
 
 
 template<typename T, unsigned h, unsigned w>
@@ -55,7 +56,6 @@ int main() {
 
 	std::cout << "Matrix F" << std::endl;
 	mF.print("%2d");*/
-
 	// auto multiplication = mB * mC;
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
