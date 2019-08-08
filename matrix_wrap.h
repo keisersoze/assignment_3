@@ -178,22 +178,11 @@ struct matrix_wrap_impl {
 
     virtual const T &get(unsigned i, unsigned j) const = 0;
 
-    //TODO this is an interface move down the impl
-    matrix<T> get_submatrix(window_spec spec) {
-        unsigned int height = spec.row_end - spec.row_start + 1;
-        unsigned int width = spec.col_end - spec.col_start + 1;
-        matrix<T> m(height, width);
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                m(i, j) = get(i + spec.row_start, j + spec.col_start);
-            }
-        }
-        return m;
-    }
-
     virtual std::unique_ptr<matrix_wrap_impl<T>> clone() const = 0;
 
     virtual ~matrix_wrap_impl() {}
+
+    virtual matrix<T> get_submatrix(window_spec spec) = 0;
 
     virtual std::unique_ptr<matrix_wrap_impl<T>> transpose() const = 0;
 
@@ -231,6 +220,19 @@ public:
         return std::make_unique<
                 concrete_matrix_wrap_impl<T, typename decltype(mat.transpose())::matrix_type>
         >(mat.transpose());
+    }
+
+
+    matrix<T> get_submatrix(window_spec spec) {
+        unsigned int height = spec.row_end - spec.row_start + 1;
+        unsigned int width = spec.col_end - spec.col_start + 1;
+        matrix<T> m(height, width);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                m(i, j) = get(i + spec.row_start, j + spec.col_start);
+            }
+        }
+        return m;
     }
 
     //will not work: cyclic type expansion!
@@ -335,6 +337,17 @@ public:
         }
     */
 
+    matrix<T> get_submatrix(window_spec spec) {
+        unsigned int height = spec.row_end - spec.row_start + 1;
+        unsigned int width = spec.col_end - spec.col_start + 1;
+        matrix<T> m(height, width);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                m(i, j) = get(i + spec.row_start, j + spec.col_start);
+            }
+        }
+        return m;
+    }
 
     std::unique_ptr<iterator_impl<T>> begin() override {
         return std::make_unique<

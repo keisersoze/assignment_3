@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(.)
 
 add_executable(assignment_3
-        thread_pool.h matrix_product.h matrix_sum.h matrix_expression.h example6.cpp)
+        thread_pool.h matrix_product.h matrix_sum.h matrix_expression.h example6.cc)
