@@ -22,6 +22,9 @@ public:
     template<class matrix_type>
     matrix_singleton(matrix_ref<T, matrix_type> m): singleton(m) {};
 
+    template<class matrix_type,typename U>
+    matrix_singleton (matrix_ref<U, matrix_type> m): singleton(m){};
+
     matrix_wrap<T> resolve_all() {
         return this->singleton;
     }

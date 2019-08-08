@@ -415,6 +415,16 @@ public:
 
     matrix_wrap(const matrix_wrap<T> &X) : pimpl(X.pimpl->clone()) {}
 
+    template<class matrix_type, typename U>
+    matrix_wrap(const matrix_ref<U, matrix_type> &M) {
+        matrix<T> m(M.get_height(),M.get_width());
+        for (int i = 0; i < M.get_height(); ++i) {
+            for (int j = 0; j < M.get_width(); ++j) {
+                m(i,j) = M(i,j);
+            }
+        }
+        pimpl = std::make_unique<concrete_matrix_wrap_impl<T,matrix_type>>(std::move(m));
+    }
 
     matrix_wrap transpose() const { return matrix_wrap(pimpl->transpose()); }
 
