@@ -69,9 +69,14 @@ private:
     template<unsigned w2>
     matrix_product(matrix_product<T, h, w2> &&X);
 
-    void add(std::unique_ptr<matrix_expression<T>> &&mat){
+    void add_back(std::unique_ptr<matrix_expression<T>> &&mat){
         sizes.push_back(mat->get_width());
         expressions.push_back(std::move(mat));
+    }
+
+    void add_front(std::unique_ptr<matrix_expression<T>> &&mat){
+        sizes.insert(sizes.begin(), mat->get_width());
+        expressions.insert(expressions.begin(), std::move(mat));
     }
 
     unsigned find_max_and_update(std::vector<std::future<matrix_wrap<T>>> &futures){
@@ -194,8 +199,8 @@ operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
     static_assert((matrix_ref<T, LType>::W == matrix_ref<U, RType>::H),
                   "dimension mismatch in Matrix addition");
     matrix_product<decltype(T() * U()), matrix_ref<T, LType>::H, matrix_ref<U, RType>::W> result;
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
     return result;
 }
 
@@ -210,8 +215,8 @@ operator*(const matrix_ref<T, LType> &lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     // 0,0 because we loose the static information
     matrix_product<decltype(T() * U()), 0, 0> result;
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
     return result;
 }
 
@@ -225,7 +230,7 @@ operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == w),
                   "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs))
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs))
     );
     return result;
 }
@@ -240,7 +245,7 @@ operator*(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix product");
     }
     matrix_product<decltype(T() + U()), h, w> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
     return result;
 }
 
@@ -254,7 +259,7 @@ operator*(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::W == h),
                   "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), h, matrix_ref<T, RType>::W> result(std::move(rhs));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
     return result;
 }
 
@@ -268,7 +273,7 @@ operator*(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_product<decltype(T() * U()), h, w> result(std::move(rhs));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
     return result;
 }
 
@@ -280,7 +285,7 @@ std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>
 operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix addition");
     matrix_product<decltype(T() * U()), hl, wr> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
@@ -295,7 +300,7 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
         throw std::domain_error("dimension mismatch in Matrix multiplication");
     }
     matrix_product<decltype(T() * U()), 0, 0> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
@@ -307,8 +312,8 @@ std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>
 operator*(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), hl, wr> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
@@ -322,8 +327,8 @@ operator*(matrix_sum<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
         throw std::domain_error("dimension mismatch in matrix_sum multiplication");
     }
     matrix_product<decltype(T() * U()), 0, 0> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
@@ -335,7 +340,7 @@ std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>
 operator*(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), hl, wr> result(std::move(rhs));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 /**
@@ -348,7 +353,7 @@ operator*(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
         throw std::domain_error("dimension mismatch in matrix_sum multiplication");
     }
     matrix_product<decltype(T() * U()), 0, 0> result(std::move(rhs));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
 /**
@@ -359,7 +364,7 @@ std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>
 operator*(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), hl, wr> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 /**
@@ -372,7 +377,7 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
         throw std::domain_error("dimension mismatch in matrix_sum multiplication");
     }
     matrix_product<decltype(T() * U()), 0, 0> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 
@@ -387,8 +392,8 @@ operator*(matrix_sum<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == w),
                   "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() + U()), h, matrix_ref<T, RType>::W> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(lhs))));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
     return result;
 }
 
@@ -402,8 +407,8 @@ operator*(matrix_sum<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
         throw std::domain_error("dimension mismatch in Matrix product");
     }
     matrix_product<decltype(T() + U()), 0, 0> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(lhs))));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(lhs))));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(rhs)));
     return result;
 }
 
@@ -417,8 +422,8 @@ operator*(const matrix_ref<U, RType> &lhs, matrix_sum<T, h, w> &&rhs) {
     static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::W == h),
                   "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), h, matrix_ref<T, RType>::W> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
     return result;
 }
 
@@ -432,8 +437,8 @@ operator*(const matrix_ref<U, RType> &lhs, matrix_sum<T, h, w> &&rhs) {
         throw std::domain_error("dimension mismatch in Matrix addition");
     }
     matrix_product<decltype(T() * U()), 0, 0> result;
-    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(rhs))));
-    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
+    result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), h, w>>(std::move(rhs))));
+    result.add_back(std::move(std::make_unique<matrix_singleton<decltype(T() * U())>>(lhs)));
     return result;
 }
 
