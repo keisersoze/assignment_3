@@ -359,7 +359,7 @@ std::enable_if_t<hl != 0 && hr != 0, matrix_product<decltype(T() * U()), hl, wr>
 operator*(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     static_assert(wl == hr, "dimension mismatch in Matrix multiplication");
     matrix_product<decltype(T() * U()), hl, wr> result(std::move(lhs));
-    result.add(std::move(std::make_unique<matrix_product<decltype(T() * U()), hr, wr>>(std::move(rhs))));
+    result.add(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
 /**
