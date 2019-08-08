@@ -12,6 +12,7 @@
 #include "matrix_expression.h"
 #include "matrix_fwd.h"
 #include "thread_pool.h"
+#include "matrix_product.h"
 #include <unistd.h>
 
 
@@ -157,6 +158,22 @@ private:
     template<typename V, typename U, unsigned hl, unsigned wl, unsigned hr, unsigned wr>
     std::enable_if_t<hl == 0 || hr == 0, matrix_sum<decltype(V() + U()), 0, 0>>
     friend operator+(matrix_product<V, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(V() + U()), hl, wl>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(V() + U()), 0, 0>>
+    friend operator+(matrix_product<V, hl, wl> &&lhs, const matrix_ref<U, RType> &rhs);
+
+    template<typename V, typename U, unsigned hr, unsigned wr, class RType>
+    std::enable_if_t<hr != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(V() + U()), hr, wr>>
+    friend operator+(const matrix_ref<U, RType> &lhs, matrix_product<V, hr, wr> &&rhs);
+
+    template<typename V, typename U, unsigned hl, unsigned wl, class RType>
+    std::enable_if_t<hl == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(V() + U()), 0, 0>>
+    friend operator+(const matrix_ref<U, RType> &lhs, matrix_product<T, hl, wl> &&rhs);
 };
 
 
@@ -344,6 +361,55 @@ operator+(matrix_product<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hl, wl>>(std::move(lhs))));
     result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), hr, wr>>(std::move(rhs))));
     return result;
+}
+
+
+/**
+ * Static overload for sum operation between matrix_product and matrix_ref
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(T() + U()), h, w>>
+operator+(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+    static_assert(matrix_ref<T, RType>::W * w == 0 || (matrix_ref<T, RType>::H == h && matrix_ref<T, RType>::W == w),
+                  "dimension mismatch in Matrix multiplication");
+
+    matrix_sum<decltype(T() + U()), h, w> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), h, w>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
+    return result;
+}
+
+/**
+ * Dynamic overload for sum operation between matrix_product and matrix_ref
+ */
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(matrix_product<T, h, w> &&lhs, const matrix_ref<U, RType> &rhs) {
+    if (lhs.get_height() != rhs.get_height() && lhs.get_width() != rhs.get_width()) {
+        throw std::domain_error("dimension mismatch in Matrix addition");
+    }
+    matrix_sum<decltype(T() + U()), 0, 0> result;
+    result.add(std::move(std::make_unique<matrix_product<decltype(T() + U()), h, w>>(std::move(lhs))));
+    result.add(std::move(std::make_unique<matrix_singleton<decltype(T() + U())>>(rhs)));
+    return result;
+}
+
+/**
+ * Static overload for sum operation between matrix_ref and matrix_product
+*/
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h != 0 && matrix_ref<U, RType>::H != 0, matrix_sum<decltype(T() + U()), h, w>>
+operator+(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
+    return std::move(rhs) + lhs;
+}
+
+/**
+ * Dynamic overload for sum operation between matrix_ref and matrix_product
+*/
+template<typename T, typename U, unsigned h, unsigned w, class RType>
+std::enable_if_t<h == 0 || matrix_ref<U, RType>::H == 0, matrix_sum<decltype(T() + U()), 0, 0>>
+operator+(const matrix_ref<U, RType> &lhs, matrix_product<T, h, w> &&rhs) {
+    return std::move(rhs) + lhs;
 }
 
 

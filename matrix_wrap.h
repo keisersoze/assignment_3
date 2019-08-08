@@ -223,7 +223,7 @@ public:
     }
 
 
-    matrix<T> get_submatrix(window_spec spec) {
+    matrix<T> get_submatrix(window_spec spec) override {
         unsigned int height = spec.row_end - spec.row_start + 1;
         unsigned int width = spec.col_end - spec.col_start + 1;
         matrix<T> m(height, width);
@@ -337,7 +337,7 @@ public:
         }
     */
 
-    matrix<T> get_submatrix(window_spec spec) {
+    matrix<T> get_submatrix(window_spec spec) override {
         unsigned int height = spec.row_end - spec.row_start + 1;
         unsigned int width = spec.col_end - spec.col_start + 1;
         matrix<T> m(height, width);

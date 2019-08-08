@@ -76,8 +76,8 @@ int main() {
     initializeCells(mB);
     matrix<int, 100, 100> mC;
     initializeCells(mC);
-    matrix<int, 100, 20> mD;
-    initializeCells(mC);
+    matrix<int, 100, 100> mD;
+    initializeCells(mD);
     matrix<int> m1(100, 100);
     initializeCells(m1);
     matrix<int> m2(100, 100);
@@ -115,8 +115,27 @@ int main() {
     print_matrix(res10);
 
     /**
-     * Static matrix_produc
+     * Static matrix_product
      */
-    matrix<int> res10 = m1 + (mA + m2);
-    print_matrix(res10);
+    matrix<int> res11 = (mA * mD) + mA;
+    print_matrix(res11);
+
+    matrix<int> res12 = mA + (mA * mD);
+    print_matrix(res12);
+
+    matrix<int> res13 = m1 + (mA * mD);
+    print_matrix(res13);
+
+    matrix<int> res14 = (m1 * mD) + m1;
+    print_matrix(res14);
+
+    matrix<int> res15 = (m1 + m1) * (mA + mA);
+    print_matrix(res15);
+
+    matrix<int> res16 = (m1 + m1) * (mA * mA);
+    print_matrix(res16);
+
+    matrix<int> res17 = (mA * mA) * (m1 + m1);
+    print_matrix(res17);
+
 }
