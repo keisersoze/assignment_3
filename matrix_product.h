@@ -11,47 +11,47 @@
 #include "parallel_multiplication.h"
 #include "matrix_expression.h"
 #include "thread_pool.h"
+
 template<typename T, unsigned h, unsigned w>
 class matrix_product : public matrix_expression<T> {
 public:
     template<typename T2, unsigned h2, unsigned w2>
     friend class matrix_sum;
+
     template<typename T2, unsigned h2, unsigned w2>
     friend class matrix_product;
 
-    matrix_wrap<T> resolve_all(){
+    matrix_wrap<T> resolve_all() {
         std::vector<std::future<matrix_wrap<T>>> futures;
         for (auto &&aux : expressions) {
-            futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
+            futures.push_back(std::async(std::launch::async, &matrix_expression<T>::resolve_all, std::move(aux)));
         }
         while (futures.size() > 2) {
             unsigned lhs = find_max_and_update(futures);
             unsigned rhs = lhs + 1;
-            futures.insert(futures.begin() + lhs, ThreadPool::getSingleton().enqueue(do_multiply<T>,
-                                                                                     (*(futures.begin() + lhs)).get(),
-                                                                                     (*(futures.begin() + rhs)).get()));
+            futures.insert(futures.begin() + lhs, std::async(std::launch::async, do_multiply<T>, (*(futures.begin() + lhs)).get(),
+                                                             (*(futures.begin() + rhs)).get()));
             futures.erase(futures.begin() + rhs);
             futures.erase(futures.begin() + rhs);
         }
         return do_multiply(futures[0].get(), futures[1].get());
     }
 
-    operator matrix<T>(){
+    operator matrix<T>() {
         matrix_wrap<T> res = resolve_all();
         return res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
     }
 
     template<unsigned h2, unsigned w2>
-    operator matrix<T, h2, w2>(){
+    operator matrix<T, h2, w2>() {
         static_assert((h == 0 || h == h2) && (w == 0 || w == w2), "sized product conversion to wrong sized matrix");
         matrix_wrap<T> res = resolve_all();
         return (matrix<T, h2, w2>) res.get_submatrix({0, res.get_height() - 1, 0, res.get_width() - 1});
     }
 
-    unsigned get_height() const{ return expressions.front()->get_height(); }
+    unsigned get_height() const { return expressions.front()->get_height(); }
 
-    unsigned get_width() const{ return expressions.back()->get_width(); }
-
+    unsigned get_width() const { return expressions.back()->get_width(); }
 
 
 private:
@@ -60,20 +60,21 @@ private:
 
     matrix_product() = default;
 
-    template <typename U, unsigned h2, unsigned w2>
+    template<typename U, unsigned h2, unsigned w2>
     matrix_product(matrix_product<U, h2, w2> &&X) : expressions(std::move(X.expressions)),
                                                     sizes(std::move(X.sizes)) {};
-    void add_back(std::unique_ptr<matrix_expression<T>> &&mat){
+
+    void add_back(std::unique_ptr<matrix_expression<T>> &&mat) {
         sizes.push_back(mat->get_width());
         expressions.push_back(std::move(mat));
     }
 
-    void add_front(std::unique_ptr<matrix_expression<T>> &&mat){
+    void add_front(std::unique_ptr<matrix_expression<T>> &&mat) {
         sizes.insert(sizes.begin(), mat->get_width());
         expressions.insert(expressions.begin(), std::move(mat));
     }
 
-    unsigned find_max_and_update(std::vector<std::future<matrix_wrap<T>>> &futures){
+    unsigned find_max_and_update(std::vector<std::future<matrix_wrap<T>>> &futures) {
         auto mat_iter = futures.begin();
         auto size_iter = sizes.begin();
         auto size_iter_max = sizes.begin();
@@ -338,6 +339,7 @@ operator*(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     result.add_front(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
+
 /**
  * Dynamic overload for product between matrix_sum and matrix_product
 */
@@ -351,6 +353,7 @@ operator*(matrix_sum<T, hl, wl> &&lhs, matrix_product<U, hr, wr> &&rhs) {
     result.add_front(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hl, wl>>(std::move(lhs))));
     return result;
 }
+
 /**
  * Static overload for product between matrix_product and matrix_sum
 */
@@ -362,6 +365,7 @@ operator*(matrix_product<T, hl, wl> &&lhs, matrix_sum<U, hr, wr> &&rhs) {
     result.add_back(std::move(std::make_unique<matrix_sum<decltype(T() * U()), hr, wr>>(std::move(rhs))));
     return result;
 }
+
 /**
  * Dynamic overload for product between matrix_product and matrix_sum
 */

@@ -15,7 +15,6 @@
 #include "matrix_product.h"
 #include <unistd.h>
 
-
 template<typename T>
 matrix_wrap<T> sum(const matrix_wrap<T> &m1, const matrix_wrap<T> &m2) {
     unsigned height = m1.get_height();
@@ -44,14 +43,14 @@ public:
     matrix_wrap<T> resolve_all() {
         std::vector<std::future<matrix_wrap<T>>> futures;
         for (auto &&aux : operands) {
-            futures.push_back(ThreadPool::getSingleton().enqueue([&aux]() { return aux->resolve_all(); }));
+            futures.push_back(std::async(std::launch::async, &matrix_expression<T>::resolve_all, std::move(aux)));
         }
         while (futures.size() > 1) {
             int num_iter = futures.size() / 2;
             for (unsigned i = 0; i < num_iter; i++) {
                 matrix_wrap<T> m1 = futures[0].get();
                 matrix_wrap<T> m2 = futures[1].get();
-                futures.push_back(ThreadPool::getSingleton().enqueue(sum<T>, m1, m2));
+                futures.push_back(std::async(std::launch::async, sum<T>, m1, m2));
                 futures.erase(futures.begin());
                 futures.erase(futures.begin());
             }
