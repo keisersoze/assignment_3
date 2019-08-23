@@ -570,7 +570,7 @@ public:
         this->width = width;
         data = std::make_shared<std::vector<T>>(width * height);
 
-        // std::cerr << "matrix constructor\n";
+       // std::cerr << "matrix constructor\n";
     }
 
     matrix(const matrix<T> &X) {
@@ -579,7 +579,7 @@ public:
         data = std::make_shared<std::vector<T>>(width * height);
         *data = *(X.data);
 
-        // std::cerr << "matrix copy constructor\n";
+        std::cerr << "matrix copy constructor\n";
     }
 
     matrix(matrix<T> &&X) {
@@ -587,7 +587,7 @@ public:
         width = X.width;
         data = std::move(X.data);
 
-        // std::cerr << "matrix move constructor\n";
+        std::cerr << "matrix move constructor\n";
     }
 
     template<class matrix_type>
@@ -640,7 +640,7 @@ public:
         data = std::make_shared<std::vector<T>>(width * height);
         *data = *(X.data);
 
-        // std::cerr << "sized matrix copy constructor\n";
+        std::cerr << "sized matrix copy constructor\n";
     }
 
     matrix(matrix<T, h, w> &&X) {
@@ -648,7 +648,7 @@ public:
         width = X.width;
         data = std::move(X.data);
 
-        // std::cerr << "sized matrix move constructor\n";
+        std::cerr << "sized matrix move constructor\n";
     }
 
 

@@ -82,12 +82,12 @@ matrix_wrap<T> do_multiply(const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs)
             futures.push_back(
                     ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn<T>, std::ref(result), lhs_window,
                                                        rhs_window,
-                                                       lhs, rhs));
+                                                       std::cref(lhs), std::cref(rhs)));
         }
         window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), rhs.get_width() - 1};
         futures.push_back(
                 ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn<T>, std::ref(result), lhs_window, rhs_window,
-                                                   lhs, rhs));
+                                                   std::cref(lhs), std::cref(rhs)));
     }
     window_spec lhs_window = {i - (BLOCK_DIM - 1), lhs.get_height() - 1, 0, lhs.get_width() - 1};
     unsigned j = BLOCK_DIM - 1;
@@ -95,12 +95,12 @@ matrix_wrap<T> do_multiply(const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs)
         window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), j};
         futures.push_back(
                 ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn<T>, std::ref(result), lhs_window, rhs_window,
-                                                   lhs, rhs));
+                                                   std::cref(lhs), std::cref(rhs)));
     }
     window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), rhs.get_width() - 1};
     futures.push_back(
             ThreadPool::getSingleton().enqueue(blockrow_product_blockcolumn<T>, std::ref(result), lhs_window, rhs_window,
-                                               lhs, rhs));
+                                               std::cref(lhs), std::cref(rhs)));
 
     for (unsigned long i = 0; i < futures.size(); ++i) {
         futures[i].get();
