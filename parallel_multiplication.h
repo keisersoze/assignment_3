@@ -12,16 +12,17 @@
 
 
 #define BLOCK_DIM 90
-template <typename T>
-class parallel_multiplication{
+
+template<typename T>
+class parallel_multiplication {
 
 private:
-    typedef std::map <std::string, matrix<T>>  mapT;
+    typedef std::map<std::string, std::shared_ptr<matrix<T>>> mapT;
     std::mutex mutex;
     mapT matrix_map;
 
     void block_product_block(matrix<T> &result, window_spec lhs_window, window_spec rhs_window,
-    const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+                             const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
 
         assert(lhs_window.col_end - lhs_window.col_start == rhs_window.row_end - rhs_window.row_start);
 
@@ -37,34 +38,49 @@ private:
 
         //Only here we load real data
         std::string s1 = std::to_string(lhs_window.row_start) + std::to_string(lhs_window.row_end)
-                + std::to_string(lhs_window.col_start) +  std::to_string(lhs_window.col_end);
+                         + std::to_string(lhs_window.col_start) + std::to_string(lhs_window.col_end);
         std::string s2 = std::to_string(rhs_window.row_start) + std::to_string(rhs_window.row_end)
-                + std::to_string(rhs_window.col_start) +  std::to_string(rhs_window.col_end);
+                         + std::to_string(rhs_window.col_start) + std::to_string(rhs_window.col_end);
 
-        matrix<T> lhs_sub (lhs_window.row_end - lhs_window.row_end, lhs_window.col_start - lhs_window.col_end);
-        matrix<T> rhs_sub (rhs_window.row_end - rhs_window.row_end, rhs_window.col_start - rhs_window.col_end);
+        std::shared_ptr<matrix<T>> lhs_sub_ptr;
+        std::shared_ptr<matrix<T>> rhs_sub_ptr;
         {
             std::unique_lock<std::mutex> lock(mutex);
-            typename mapT::iterator it_1 = matrix_map.find(s1);
-            typename mapT::iterator it_2 = matrix_map.find(s2);
-            if( it_1 != matrix_map.end() ){
-                lhs_sub = it_1->second;
+            typename mapT::iterator lhs_it = matrix_map.find(s1);
+            typename mapT::iterator rhs_it = matrix_map.find(s2);
+            if (lhs_it == matrix_map.end()) {
+                lhs_sub_ptr = std::make_shared<matrix<T>>(lhs_window.row_end - lhs_window.row_start, lhs_window.col_end - lhs_window.col_start);
+                unsigned int height = lhs_window.row_end - lhs_window.row_start + 1;
+                unsigned int width = lhs_window.col_end - lhs_window.col_start + 1;
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        lhs_sub_ptr->operator()(i, j) = lhs(i + lhs_window.row_start, j + lhs_window.col_start);
+                    }
+                }
+                matrix_map.insert(std::pair<std::string,std::shared_ptr<matrix<T>>>(s1,lhs_sub_ptr));
             } else{
-                lhs_sub = lhs.get_submatrix(lhs_window);
-                matrix_map.insert(std::pair<std::string, matrix<T>> (s1,lhs_sub));
+                lhs_sub_ptr = lhs_it->second;
             }
-            if( it_2 != matrix_map.end() ){
-                rhs_sub = it_2->second;
+            if (rhs_it == matrix_map.end()) {
+                rhs_sub_ptr = std::make_shared<matrix<T>>(rhs_window.row_end - rhs_window.row_start, rhs_window.col_end - rhs_window.col_start);
+                unsigned int height = rhs_window.row_end - rhs_window.row_start + 1;
+                unsigned int width = rhs_window.col_end - rhs_window.col_start + 1;
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        rhs_sub_ptr->operator()(i, j) = rhs(i + rhs_window.row_start, j + rhs_window.col_start);
+                    }
+                }
+                matrix_map.insert(std::pair<std::string,std::shared_ptr<matrix<T>>>(s2,rhs_sub_ptr));
             } else{
-                rhs_sub = rhs.get_submatrix(rhs_window);
-                matrix_map.insert(std::pair<std::string, matrix<T>> (s2,rhs_sub));
+                rhs_sub_ptr = rhs_it->second;
             }
         }
 
         for (unsigned i = 0; i < res_height; ++i) {
             for (unsigned j = 0; j < res_width; ++j) {
                 for (unsigned k = 0; k < span; ++k) {
-                    result(result_window.row_start + i, result_window.col_start + j) += lhs_sub(i, k) * rhs_sub(k, j);
+                    result(result_window.row_start + i, result_window.col_start + j) +=
+                            lhs_sub_ptr->operator()(i, k) * rhs_sub_ptr->operator()(k, j);
                 }
             }
         }
@@ -72,7 +88,7 @@ private:
 
 
     void blockrow_product_blockcolumn(matrix<T> &result, window_spec lhs_window, window_spec rhs_window,
-    const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
+                                      const matrix_wrap<T> &lhs, const matrix_wrap<T> &rhs) {
 
         assert (lhs_window.col_start == 0 && rhs_window.row_start == 0 && lhs_window.col_end == lhs.get_width() - 1 &&
                 rhs_window.row_end == rhs.get_height() - 1);
@@ -84,8 +100,10 @@ private:
             block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
         }
 
-        window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - (BLOCK_DIM - 1), lhs_window.col_end};
-        window_spec rhs_window_matrix = {i - (BLOCK_DIM - 1), rhs_window.row_end, rhs_window.col_start, rhs_window.col_end};
+        window_spec lhs_window_matrix = {lhs_window.row_start, lhs_window.row_end, i - (BLOCK_DIM - 1),
+                                         lhs_window.col_end};
+        window_spec rhs_window_matrix = {i - (BLOCK_DIM - 1), rhs_window.row_end, rhs_window.col_start,
+                                         rhs_window.col_end};
         block_product_block(result, lhs_window_matrix, rhs_window_matrix, lhs, rhs);
     }
 
@@ -111,13 +129,15 @@ public:
             for (; j < rhs.get_width() - 1; j += BLOCK_DIM) {
                 window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), j};
                 futures.push_back(
-                        ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn, std::ref(*this), std::ref(result), lhs_window,
+                        ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn,
+                                                           std::ref(*this), std::ref(result), lhs_window,
                                                            rhs_window,
                                                            std::cref(lhs), std::cref(rhs)));
             }
             window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), rhs.get_width() - 1};
             futures.push_back(
-                    ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn, std::ref(*this), std::ref(result), lhs_window, rhs_window,
+                    ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn,
+                                                       std::ref(*this), std::ref(result), lhs_window, rhs_window,
                                                        std::cref(lhs), std::cref(rhs)));
         }
         window_spec lhs_window = {i - (BLOCK_DIM - 1), lhs.get_height() - 1, 0, lhs.get_width() - 1};
@@ -125,12 +145,14 @@ public:
         for (; j < rhs.get_width() - 1; j += BLOCK_DIM) {
             window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), j};
             futures.push_back(
-                    ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn, std::ref(*this), std::ref(result), lhs_window, rhs_window,
+                    ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn,
+                                                       std::ref(*this), std::ref(result), lhs_window, rhs_window,
                                                        std::cref(lhs), std::cref(rhs)));
         }
         window_spec rhs_window = {0, rhs.get_height() - 1, j - (BLOCK_DIM - 1), rhs.get_width() - 1};
         futures.push_back(
-                ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn, std::ref(*this), std::ref(result), lhs_window, rhs_window,
+                ThreadPool::getSingleton().enqueue(&parallel_multiplication<T>::blockrow_product_blockcolumn,
+                                                   std::ref(*this), std::ref(result), lhs_window, rhs_window,
                                                    std::cref(lhs), std::cref(rhs)));
 
         for (unsigned long i = 0; i < futures.size(); ++i) {
@@ -143,8 +165,6 @@ public:
 
     parallel_multiplication() {};
 };
-
-
 
 
 #endif //ASSIGNMENT_3_PARALLEL_MULTIPLICATION_H
