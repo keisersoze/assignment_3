@@ -29,12 +29,14 @@ public:
         while (futures.size() > 2) {
             unsigned lhs = find_max_and_update(futures);
             unsigned rhs = lhs + 1;
-            futures.insert(futures.begin() + lhs, std::async(std::launch::async, do_multiply<T>, (*(futures.begin() + lhs)).get(),
+            parallel_multiplication<T> product;
+            futures.insert(futures.begin() + lhs, std::async(std::launch::async, &parallel_multiplication<T>::do_multiply, std::ref(product),(*(futures.begin() + lhs)).get(),
                                                              (*(futures.begin() + rhs)).get()));
             futures.erase(futures.begin() + rhs);
             futures.erase(futures.begin() + rhs);
         }
-        return do_multiply(futures[0].get(), futures[1].get());
+        parallel_multiplication<T> product;
+        return product.do_multiply(futures[0].get(), futures[1].get());
     }
 
     operator matrix<T>() {

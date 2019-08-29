@@ -7,4 +7,4 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O3")
 include_directories(.)
 
 add_executable(assignment_3
-        thread_pool.h matrix_product.h matrix_sum.h matrix_expression.h example7.cc)
+        thread_pool.h matrix_product.h matrix_sum.h matrix_expression.h example8.cc)

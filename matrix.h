@@ -609,6 +609,8 @@ public:
         std::cerr << "matrix foreign constructor\n";
     }
 
+    matrix<T>& operator=(const matrix<T>& other) = default;
+
     using matrix_ref<T, Plain>::H;
     using matrix_ref<T, Plain>::W;
 
@@ -675,6 +677,8 @@ public:
 
         std::cerr << "sized matrix foreign constructor\n";
     }
+
+    matrix<T, h, w>& operator=(const matrix<T, h, w>& other) = default;
 
     using matrix_ref<T, Sized<h, w>>::H;
     using matrix_ref<T, Sized<h, w>>::W;
