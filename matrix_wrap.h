@@ -301,7 +301,6 @@ template<typename T, class decorated>
 class concrete_matrix_wrap_impl<T, Diagonal_matrix<decorated>> : public matrix_wrap_impl<T> {
 public:
     T &get(unsigned i, unsigned j) override {
-        //TODO Why this stuff
         static T result;
         return result = mat(i, j);
     }

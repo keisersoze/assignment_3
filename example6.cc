@@ -69,7 +69,7 @@ void print_matrix(matrix<T, h, w> &m) {
 
 int main() {
 
-    /*matrix<int, 100, 100> mA;
+    matrix<int, 100, 100> mA;
     initializeCells(mA);
     matrix<int, 100, 100> mB;
     initializeCells(mB);
@@ -82,41 +82,41 @@ int main() {
     matrix<int> m2(100, 100);
     initializeCells(m2);
     matrix<int> m3(100, 100);
-    initializeCells(m3);*/
+    initializeCells(m3);
     /**
      * Static matrix_sum
      */
-    /*matrix<int, 100, 100> res1 = mC + mB;
+    matrix<int, 100, 100> res1 = mC + mB;
     print_matrix(res1);
     matrix<int, 100, 100> res2 = mC + mB + mA;
     print_matrix(res2);
     matrix<int, 100, 100> res3 = mC + (mB + mA);
     print_matrix(res3);
     matrix<int, 100, 100> res4 = (mC + mB) + (mC + mB);
-    print_matrix(res4);*/
+    print_matrix(res4);
     /**
     * Dynamic matrix_sum
     */
-    /*matrix<int> res5 = m1 + m2;
+    matrix<int> res5 = m1 + m2;
     print_matrix(res5);
     matrix<int> res6 = m1 + m2 + m3;
     print_matrix(res6);
     matrix<int> res7 = m1 + (m1 + m2);
     print_matrix(res7);
     matrix<int> res8 = (m1 + m1) + (m1 + m1);
-    print_matrix(res8);*/
+    print_matrix(res8);
     /**
     * Dynamic e static matrix_sum
     */
-    /*matrix<int> res9 = mA + m1;
+    matrix<int> res9 = mA + m1;
     print_matrix(res9);
     matrix<int> res10 = m1 + (mA + m2);
-    print_matrix(res10);*/
+    print_matrix(res10);
 
     /**
      * Static matrix_product
      */
-    /*matrix<int> res11 = (mA * mD) + mA;
+    matrix<int> res11 = (mA * mD) + mA;
     print_matrix(res11);
 
     matrix<int> res12 = mA + (mA * mD);
@@ -132,7 +132,7 @@ int main() {
     print_matrix(res15);
 
     matrix<int> res16 = (m1 + m1) * (mA * mA);
-    print_matrix(res16);*/
+    print_matrix(res16);
 
     matrix<int, 100, 20> mE;
     initializeCells(mE);
