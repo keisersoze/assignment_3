@@ -55,9 +55,9 @@ int main() {
     matrix<int, 15000, 15000> mB;
     initializeCells(mB);
     matrix<int, 15000, 15000> mC;
-    initializeCells(mA);
+    initializeCells(mC);
     matrix<int, 15000, 15000> mD;
-    initializeCells(mB);
+    initializeCells(mD);
 
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
