@@ -30,12 +30,24 @@ void block_product_block(matrix<T> &result, window_spec lhs_window, window_spec 
     //Only here we load real data
     matrix<T> lhs_sub = lhs.get_submatrix(lhs_window);
     matrix<T> rhs_sub = rhs.get_submatrix(rhs_window);
+    matrix<T> result_tmp (res_height,res_width);
+    for (unsigned i = 0; i < res_height; ++i) {
+        for (unsigned j = 0; j < res_width; ++j) {
+            result_tmp (i, j) = 0;
+        }
+    }
+
+    for (unsigned i = 0; i < res_height; ++i) {
+        for (unsigned k = 0; k < span; ++k) {
+            for (unsigned j = 0; j < res_width; ++j) {
+                result_tmp(i, j) += lhs_sub(i, k) * rhs_sub(k, j);
+            }
+        }
+    }
 
     for (unsigned i = 0; i < res_height; ++i) {
         for (unsigned j = 0; j < res_width; ++j) {
-            for (unsigned k = 0; k < span; ++k) {
-                result(result_window.row_start + i, result_window.col_start + j) += lhs_sub(i, k) * rhs_sub(k, j);
-            }
+            result(result_window.row_start + i, result_window.col_start + j) += result_tmp (i, j);
         }
     }
 }
