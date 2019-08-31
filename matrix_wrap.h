@@ -229,7 +229,7 @@ public:
         matrix<T> m(height, width);
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
-                m(i, j) = get(i + spec.row_start, j + spec.col_start);
+                m(i, j) = mat(i + spec.row_start, j + spec.col_start);
             }
         }
         return m;
