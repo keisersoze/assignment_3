@@ -14,6 +14,8 @@ A CMakeLists.txt and it is possible to build the application using CMake
 We have developed the application using [CLion](https://www.jetbrains.com/clion/), thus it is also
 possible to import the entire project without any problem inside CLion and build the application
 using the provided facilities.
+In order to change the example test used, 
+modify the `add_executable` instruction inside `CMakeLists.txt` accordingly. The default test is `example7.cc`.
 
 
 
