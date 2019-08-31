@@ -1,7 +1,3 @@
-//
-// Created by Filippo Maganza on 2019-08-29.
-//
-
 #include <iostream>
 #include <vector>
 #include <ctime>
